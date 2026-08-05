@@ -106,6 +106,7 @@
   .hud-label{font-size:10px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
   .hud-value{font-family:var(--font-mono);font-size:28px;font-weight:700;color:var(--amber);line-height:1.15;}
   .hud-value.speed{color:var(--blue);}
+  .hud-value.alt{color:var(--green);}
   .hud-sep{width:1px;background:var(--border-soft);}
 
   /* ---------- FAB (ouvre le tiroir de paramètres) ---------- */
@@ -401,6 +402,11 @@
         <div class="hud-label">Vitesse</div>
         <div class="hud-value speed" id="hud-speed">--- km/h</div>
       </div>
+      <div class="hud-sep"></div>
+      <div class="hud-block">
+        <div class="hud-label">Altitude</div>
+        <div class="hud-value alt" id="hud-altitude">--- ft</div>
+      </div>
     </div>
 
     <button id="fab-settings" title="Paramètres">⚙</button>
@@ -486,6 +492,16 @@
           plateformes non ouvertes aux ULM. Pour la liste officielle et à jour, exporte tes données depuis ton
           compte gratuit sur <a href="https://www.basulm.ffplum.fr" target="_blank" rel="noopener" style="color:var(--blue);">basulm.ffplum.fr</a>
           puis importe le fichier ici (source à mentionner : « Fédération Française d'ULM »).
+        </p>
+      </div>
+
+      <div class="section" id="aerodromes-section">
+        <p class="panel-title">Aérodromes (150 km autour de Tours)</p>
+        <button class="tbtn" id="btn-load-ad" style="width:100%;justify-content:center;">🛫 Actualiser les aérodromes (OpenStreetMap)</button>
+        <p class="hint" id="ad-load-status" style="margin-top:6px;"></p>
+        <p class="hint">
+          Aérodromes (hors terrains ULM, déjà affichés séparément) tagués sur OpenStreetMap. Utile pour connaître
+          les terrains environnants et leurs fréquences quand elles sont renseignées — à vérifier avant tout vol.
         </p>
       </div>
 
@@ -601,26 +617,21 @@
   const FRANCE_BOUNDS = L.latLngBounds([41.0, -5.5], [51.5, 10.0]);
 
   const map = L.map('map', {
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: true,
     maxBounds: FRANCE_BOUNDS.pad(0.05),
     maxBoundsViscosity: 1.0,
     minZoom: 6
   }).fitBounds(FRANCE_BOUNDS);
 
-  const oaciLayer = L.tileLayer(
-    'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
-    '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI&STYLE=normal&FORMAT=image/jpeg' +
-    '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}',
-    {
-      maxZoom: 15,
-      minZoom: 6,
-      bounds: FRANCE_BOUNDS,
-      attribution: 'Carte OACI-VFR &copy; IGN-F/Géoportail — SIA (mise à jour annuelle)'
-    }
-  ).addTo(map);
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    minZoom: 6,
+    bounds: FRANCE_BOUNDS,
+    attribution: '&copy; OpenStreetMap contributeurs'
+  }).addTo(map);
 
-  // Vue satellite (orthophotos IGN), diffusée en tuiles WMTS ouvertes sur cartes.gouv.fr.
+  // Vue satellite (orthophotos IGN), diffusée en tuiles WMTS ouvertes et gratuites sur cartes.gouv.fr.
   const satelliteLayer = L.tileLayer(
     'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
     '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg' +
@@ -634,10 +645,13 @@
   );
 
   L.control.layers(
-    { 'Carte OACI-VFR (IGN)': oaciLayer, 'Vue satellite (IGN)': satelliteLayer },
+    { 'Fond OpenStreetMap': osmLayer, 'Vue satellite (IGN)': satelliteLayer },
     null,
     { position: 'topright', collapsed: true }
   ).addTo(map);
+
+  // Boutons + / − déplacés en bas à gauche pour ne pas gêner l'affichage du cap/vitesse en haut.
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
   map.on('click', (e) => {
     addWaypoint(e.latlng.lat, e.latlng.lng);
@@ -1005,6 +1019,9 @@
     const speedKmh = (pos.coords.speed != null && !isNaN(pos.coords.speed)) ? pos.coords.speed * 3.6 : null;
     $('hud-heading').textContent = Math.round(heading) + '°';
     $('hud-speed').textContent = speedKmh !== null ? Math.round(speedKmh) + ' km/h' : '--- km/h';
+    const alt = pos.coords.altitude;
+    const altFt = (alt != null && !isNaN(alt)) ? alt * 3.28084 : null;
+    $('hud-altitude').textContent = altFt !== null ? Math.round(altFt) + ' ft' : '--- ft';
 
     renderActiveLeg();
     updateCompassDisplay();
@@ -1356,16 +1373,62 @@
   }
 
   let ulmLayer = L.layerGroup().addTo(map);
+  let aerodromeLayer = L.layerGroup().addTo(map);
 
-  function ulmIcon(){
+  function aeroMarkerIcon(color, bearingDeg){
+    const hasAxis = bearingDeg != null && isFinite(bearingDeg);
     return L.divIcon({
       className: '',
-      html: '<div style="width:16px;height:16px;border-radius:50%;background:#3ddc84;' +
-            'border:2px solid #04220f;display:flex;align-items:center;justify-content:center;' +
-            'font-size:9px;">✈</div>',
-      iconSize: [16,16],
-      iconAnchor: [8,8]
+      html:
+        '<svg width="24" height="24" viewBox="0 0 24 24">' +
+          '<circle cx="12" cy="12" r="7.5" fill="' + color + '33" stroke="' + color + '" stroke-width="2"/>' +
+          (hasAxis
+            ? '<line x1="12" y1="1.5" x2="12" y2="22.5" stroke="' + color + '" stroke-width="2.6" ' +
+              'transform="rotate(' + bearingDeg + ' 12 12)"/>'
+            : '<circle cx="12" cy="12" r="2" fill="' + color + '"/>') +
+        '</svg>',
+      iconSize: [24,24],
+      iconAnchor: [12,12]
     });
+  }
+  function ulmIcon(bearingDeg){ return aeroMarkerIcon('#3ddc84', bearingDeg); }
+  function aerodromeIcon(bearingDeg){ return aeroMarkerIcon('#b98aff', bearingDeg); }
+
+  // Récupère les pistes OSM (aeroway=runway) de la zone pour orienter l'icône façon carte OACI
+  // (cercle traversé par l'axe de piste). Non garanti pour tous les terrains (dépend des données OSM).
+  let runwaysCache = null;
+  async function getRunways(){
+    if (runwaysCache) return runwaysCache;
+    const b = bboxAroundTours(ULM_RADIUS_KM);
+    const query = '[out:json][timeout:25];(' +
+      'way["aeroway"="runway"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
+      ');out geom;';
+    try {
+      const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body: query });
+      const json = await res.json();
+      runwaysCache = (json.elements || []).map(w => {
+        const g = w.geometry;
+        if (!g || g.length < 2) return null;
+        const first = g[0], last = g[g.length - 1];
+        return {
+          lat: (first.lat + last.lat) / 2,
+          lng: (first.lon + last.lon) / 2,
+          bearing: trueCourse(first.lat, first.lon, last.lat, last.lon)
+        };
+      }).filter(Boolean);
+    } catch(err){
+      runwaysCache = [];
+    }
+    return runwaysCache;
+  }
+
+  function nearestRunwayBearing(lat, lng, runways, maxKm){
+    let best = null, bestDist = maxKm;
+    runways.forEach(r => {
+      const d = distanceKm(lat, lng, r.lat, r.lng);
+      if (d < bestDist){ bestDist = d; best = r; }
+    });
+    return best ? best.bearing : null;
   }
 
   const FREQ_LABELS = {
@@ -1389,7 +1452,7 @@
     return out;
   }
 
-  function addUlmMarker(lat, lng, tags, sourceLabel){
+  function addUlmMarker(lat, lng, tags, sourceLabel, bearingDeg){
     const name = (tags && (tags.name || tags['name:fr'])) || 'Terrain ULM (sans nom)';
     const icao = tags && tags.icao ? ' (' + tags.icao + ')' : '';
     const info = tags && tags.description ? '<br>' + tags.description : '';
@@ -1397,10 +1460,24 @@
     const freqHtml = freqs.length
       ? '<br>' + freqs.map(f => '<b>' + f.label + ' :</b> ' + f.value + ' MHz').join('<br>')
       : '<br><span style="color:#7e8fa3;font-size:11px;">Fréquence radio non renseignée dans OpenStreetMap</span>';
-    L.marker([lat, lng], { icon: ulmIcon() })
+    L.marker([lat, lng], { icon: ulmIcon(bearingDeg) })
       .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml +
         '<br><span style="color:#7e8fa3;font-size:11px;">' + sourceLabel + '</span>')
       .addTo(ulmLayer);
+  }
+
+  function addAerodromeMarker(lat, lng, tags, sourceLabel, bearingDeg){
+    const name = (tags && (tags.name || tags['name:fr'])) || 'Aérodrome (sans nom)';
+    const icao = tags && tags.icao ? ' (' + tags.icao + ')' : '';
+    const info = tags && tags.description ? '<br>' + tags.description : '';
+    const freqs = extractFrequencies(tags);
+    const freqHtml = freqs.length
+      ? '<br>' + freqs.map(f => '<b>' + f.label + ' :</b> ' + f.value + ' MHz').join('<br>')
+      : '<br><span style="color:#7e8fa3;font-size:11px;">Fréquence radio non renseignée dans OpenStreetMap</span>';
+    L.marker([lat, lng], { icon: aerodromeIcon(bearingDeg) })
+      .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml +
+        '<br><span style="color:#7e8fa3;font-size:11px;">' + sourceLabel + '</span>')
+      .addTo(aerodromeLayer);
   }
 
   async function loadUlmBases(){
@@ -1421,6 +1498,7 @@
       const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body: query });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
+      const runways = await getRunways();
       ulmLayer.clearLayers();
       const seen = new Set();
       let count = 0;
@@ -1431,7 +1509,8 @@
         const lat = el.lat ?? (el.center && el.center.lat);
         const lng = el.lon ?? (el.center && el.center.lon);
         if (lat != null && lng != null){
-          addUlmMarker(lat, lng, el.tags, 'OpenStreetMap — contributeurs (via Overpass)');
+          const bearing = nearestRunwayBearing(lat, lng, runways, 1.5);
+          addUlmMarker(lat, lng, el.tags, 'OpenStreetMap — contributeurs (via Overpass)', bearing);
           count++;
         }
       });
@@ -1445,6 +1524,50 @@
   $('btn-load-ulm').addEventListener('click', loadUlmBases);
   // Chargement automatique des bases ULM dès l'ouverture de l'application.
   loadUlmBases();
+
+  async function loadAerodromes(){
+    const statusEl = $('ad-load-status');
+    const btn = $('btn-load-ad');
+    btn.disabled = true;
+    statusEl.textContent = 'Chargement depuis OpenStreetMap…';
+    const b = bboxAroundTours(ULM_RADIUS_KM);
+    const query = '[out:json][timeout:25];(' +
+      'node["aeroway"="aerodrome"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
+      'way["aeroway"="aerodrome"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
+      ');out center tags;';
+    try {
+      const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body: query });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const runways = await getRunways();
+      aerodromeLayer.clearLayers();
+      const seen = new Set();
+      let count = 0;
+      (json.elements || []).forEach(el => {
+        const key = el.type + el.id;
+        if (seen.has(key)) return;
+        seen.add(key);
+        // Évite les doublons avec les terrains déjà affichés dans la couche "Bases ULM"
+        // (tagués aeroway=airfield, ulm=yes ou sport=ultralight_aviation).
+        if (el.tags && (el.tags.ulm === 'yes' || el.tags.sport === 'ultralight_aviation')) return;
+        const lat = el.lat ?? (el.center && el.center.lat);
+        const lng = el.lon ?? (el.center && el.center.lon);
+        if (lat != null && lng != null){
+          const bearing = nearestRunwayBearing(lat, lng, runways, 2.5);
+          addAerodromeMarker(lat, lng, el.tags, 'OpenStreetMap — contributeurs (via Overpass)', bearing);
+          count++;
+        }
+      });
+      statusEl.textContent = count + ' aérodrome(s) chargé(s) dans un rayon de ' + ULM_RADIUS_KM + ' km autour de Tours.';
+    } catch(err){
+      statusEl.textContent = "Échec du chargement (" + err.message + "). Réessaie dans un instant.";
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  $('btn-load-ad').addEventListener('click', loadAerodromes);
+  // Chargement automatique des aérodromes dès l'ouverture de l'application.
+  loadAerodromes();
 
   function parseGpxKml(text, isKml){
     const doc = new DOMParser().parseFromString(text, 'application/xml');
