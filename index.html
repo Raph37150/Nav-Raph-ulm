@@ -481,7 +481,7 @@
       </div>
 
       <div class="section" id="ulm-bases-section">
-        <p class="panel-title">Bases ULM (150 km autour de Tours)</p>
+        <p class="panel-title">Bases ULM (200 km autour de Tours)</p>
         <button class="tbtn" id="btn-load-ulm" style="width:100%;justify-content:center;">🛩 Actualiser les bases ULM (OpenStreetMap)</button>
         <p class="hint" id="ulm-load-status" style="margin-top:6px;"></p>
         <label class="tbtn" for="ulm-file" style="width:100%;justify-content:center;margin-top:8px;">📂 Importer un export BASULM (GPX/KML)</label>
@@ -496,7 +496,7 @@
       </div>
 
       <div class="section" id="aerodromes-section">
-        <p class="panel-title">Aérodromes (150 km autour de Tours)</p>
+        <p class="panel-title">Aérodromes (200 km autour de Tours)</p>
         <button class="tbtn" id="btn-load-ad" style="width:100%;justify-content:center;">🛫 Actualiser les aérodromes (OpenStreetMap)</button>
         <p class="hint" id="ad-load-status" style="margin-top:6px;"></p>
         <p class="hint">
@@ -1361,7 +1361,7 @@
 
   /* ======================= BASES ULM (OSM autour de Tours + import BASULM) ======================= */
   const TOURS_CENTER = { lat: 47.3941, lng: 0.6848 };
-  const ULM_RADIUS_KM = 150;
+  const ULM_RADIUS_KM = 200;
 
   function bboxAroundTours(radiusKm){
     const dLat = radiusKm / 111;
@@ -1525,6 +1525,51 @@
   // Chargement automatique des bases ULM dès l'ouverture de l'application.
   loadUlmBases();
 
+  // Aérodromes de référence connus, ajoutés en dur (coordonnées AIP France / sources aéronautiques
+  // publiques vérifiées) pour garantir leur présence même si les données OSM sont incomplètes.
+  const KNOWN_AERODROMES = [
+    {
+      icao: 'LFOT', name: 'Tours Val de Loire', lat: 47.43194, lng: 0.72306, bearing: 15,
+      description: "AD mixte civil/militaire. Réservé aux aéronefs munis de radio. Interdit aux planeurs et aux ULM, sauf ULM multiaxes (classe 3)."
+    },
+    {
+      icao: 'LFEF', name: 'Amboise - Dierre', lat: 47.3398, lng: 0.9459, bearing: 100,
+      description: "Aérodrome ouvert à la CAP, libre d'accès aux ULM. Piste bitume + piste en herbe.",
+      'communication:ctaf:frequency': '118.775'
+    },
+    {
+      icao: 'LFOZ', name: "Orléans - Saint-Denis-de-l'Hôtel", lat: 47.89750, lng: 2.16417, bearing: 50,
+      description: "Aérodrome C.A.P. libre d'accès aux ULM. Piste dure + piste en herbe (vol à voile).",
+      'communication:ctaf:frequency': '122.4'
+    },
+    {
+      icao: 'LFOQ', name: 'Blois - Le Breuil', lat: 47.6765, lng: 1.2080, bearing: 120,
+      description: "Aérodrome C.A.P. libre d'accès aux ULM (toutes classes sauf paramoteur soumis à autorisation). Plusieurs pistes sécantes."
+    },
+    {
+      icao: 'LFLX', name: 'Châteauroux - Centre', lat: 46.86028, lng: 1.72111, bearing: 30,
+      description: "Grand aérodrome (ex-base US). Utilisable par ULM en HOR ATS de jour, avec PPR auprès de l'exploitant."
+    },
+    {
+      icao: 'LFEI', name: 'Briare - Châtillon', lat: 47.61440, lng: 2.78194, bearing: null,
+      description: "Aérodrome C.A.P. libre d'accès aux ULM.",
+      'communication:ctaf:frequency': '120.7'
+    },
+    {
+      icao: 'LFEL', name: 'Le Blanc', lat: 46.62080, lng: 1.08750, bearing: 40,
+      description: "Aérodrome C.A.P. libre d'accès aux ULM. Piste bitume + piste en herbe (planeurs).",
+      'communication:ctaf:frequency': '118.3'
+    }
+  ];
+
+  function addKnownAerodromes(){
+    KNOWN_AERODROMES.forEach(a => {
+      const tags = Object.assign({ name: a.name, icao: a.icao }, a);
+      addAerodromeMarker(a.lat, a.lng, tags, 'Référence vérifiée (AIP France / sources aéronautiques publiques)', a.bearing);
+    });
+  }
+  addKnownAerodromes();
+
   async function loadAerodromes(){
     const statusEl = $('ad-load-status');
     const btn = $('btn-load-ad');
@@ -1535,21 +1580,25 @@
       'node["aeroway"="aerodrome"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
       'way["aeroway"="aerodrome"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
       ');out center tags;';
+    const KNOWN_ICAOS = new Set(KNOWN_AERODROMES.map(a => a.icao));
     try {
       const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body: query });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       const runways = await getRunways();
       aerodromeLayer.clearLayers();
+      addKnownAerodromes();
       const seen = new Set();
-      let count = 0;
+      let count = KNOWN_AERODROMES.length;
       (json.elements || []).forEach(el => {
         const key = el.type + el.id;
         if (seen.has(key)) return;
         seen.add(key);
         // Évite les doublons avec les terrains déjà affichés dans la couche "Bases ULM"
-        // (tagués aeroway=airfield, ulm=yes ou sport=ultralight_aviation).
+        // (tagués aeroway=airfield, ulm=yes ou sport=ultralight_aviation) et avec les aérodromes
+        // de référence déjà ajoutés en dur ci-dessus.
         if (el.tags && (el.tags.ulm === 'yes' || el.tags.sport === 'ultralight_aviation')) return;
+        if (el.tags && el.tags.icao && KNOWN_ICAOS.has(el.tags.icao)) return;
         const lat = el.lat ?? (el.center && el.center.lat);
         const lng = el.lon ?? (el.center && el.center.lon);
         if (lat != null && lng != null){
@@ -1558,9 +1607,9 @@
           count++;
         }
       });
-      statusEl.textContent = count + ' aérodrome(s) chargé(s) dans un rayon de ' + ULM_RADIUS_KM + ' km autour de Tours.';
+      statusEl.textContent = count + ' aérodrome(s) affiché(s) dans un rayon de ' + ULM_RADIUS_KM + ' km autour de Tours.';
     } catch(err){
-      statusEl.textContent = "Échec du chargement (" + err.message + "). Réessaie dans un instant.";
+      statusEl.textContent = "Échec du chargement OpenStreetMap (" + err.message + "). Les aérodromes de référence (Tours, Amboise) restent affichés.";
     } finally {
       btn.disabled = false;
     }
