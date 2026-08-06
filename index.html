@@ -110,6 +110,60 @@
   .hud-sep{width:1px;background:var(--border-soft);}
 
   /* ---------- FAB (ouvre le tiroir de paramètres) ---------- */
+  /* ---------- Mini boussole (haut à droite, toujours visible) ---------- */
+  #mini-compass-wrap{
+    position:absolute;
+    top:64px;
+    right:14px;
+    z-index:900;
+    width:70px;height:70px;
+    filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));
+    pointer-events:none;
+  }
+
+  /* ---------- Zoom personnalisé (hors zone rotative) ---------- */
+  #zoom-controls{
+    position:absolute;
+    bottom:22px;
+    left:14px;
+    z-index:900;
+    display:flex;
+    flex-direction:column;
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  #zoom-controls button{
+    width:38px;height:38px;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--border-soft);
+    font-size:18px;
+    cursor:pointer;
+  }
+  #zoom-controls button:first-child{border-bottom:none;border-radius:8px 8px 0 0;}
+  #zoom-controls button:last-child{border-radius:0 0 8px 8px;}
+  #zoom-controls button:active{background:var(--panel);}
+
+  /* ---------- Bascule Nord en haut / Cap en haut ---------- */
+  #btn-rotate-mode{
+    position:absolute;
+    bottom:22px;
+    left:66px;
+    z-index:900;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:9px 12px;
+    font-size:12px;
+    font-weight:600;
+    font-family:var(--font-ui);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    cursor:pointer;
+  }
+  #btn-rotate-mode.on{background:var(--amber);color:#1a1300;border-color:var(--amber);}
+
   #fab-settings{
     position:absolute;
     bottom:22px;
@@ -188,7 +242,7 @@
     position:relative;
     min-height:0;
   }
-  #map{height:100%;width:100%;background:#0c1118;}
+  #map{height:100%;width:100%;background:#0c1118;transform-origin:center center;transition:transform .25s linear;}
   .panel{
     padding:0;
     min-height:0;
@@ -211,25 +265,6 @@
     border-bottom:1px solid var(--border-soft);
   }
   .section:last-child{border-bottom:none;}
-
-  /* ---------- COMPASS (signature element) ---------- */
-  #compass-wrap{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding:6px 0 14px 0;
-  }
-  #compass-readout{
-    display:flex;
-    justify-content:space-between;
-    width:100%;
-    font-family:var(--font-mono);
-    margin-top:10px;
-  }
-  .readout-block{text-align:center;flex:1;}
-  .readout-label{font-size:9px;color:var(--text-dim2);letter-spacing:1px;text-transform:uppercase;}
-  .readout-value{font-size:16px;color:var(--amber);font-weight:600;}
-  .readout-value.small{font-size:13px;color:var(--blue);}
 
   /* ---------- FORM ---------- */
   .field{margin-bottom:11px;}
@@ -309,6 +344,15 @@
     border-top:1px dashed var(--border-soft);
   }
   .leg-data span b{display:block;color:var(--text);font-size:12px;}
+  .cum-data{
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px solid var(--border-soft);
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--text-dim2);
+  }
+  .cum-data b{color:var(--amber);font-weight:600;}
   #empty-plan{color:var(--text-dim2);font-size:12px;line-height:1.6;padding:10px 2px;}
 
   /* ---------- TOTALS ---------- */
@@ -356,6 +400,16 @@
     font-family:var(--font-mono);font-size:9px;color:var(--red);white-space:nowrap;
   }
   input[type=range]{width:100%;accent-color:var(--amber);}
+
+  .weather-box{
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    border-radius:7px;
+    padding:9px 10px;
+    margin-bottom:8px;
+  }
+  .weather-label{font-size:9px;color:var(--text-dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+  .weather-text{font-family:var(--font-mono);font-size:12px;color:var(--text);line-height:1.5;word-break:break-word;white-space:pre-wrap;}
 
   .plane-icon{filter:drop-shadow(0 0 3px rgba(255,59,48,.8));}
   .wpt-marker{
@@ -409,6 +463,17 @@
       </div>
     </div>
 
+    <div id="mini-compass-wrap">
+      <svg id="mini-compass-svg" width="70" height="70" viewBox="0 0 200 200"></svg>
+    </div>
+
+    <div id="zoom-controls">
+      <button id="btn-zoom-in" title="Zoom avant">+</button>
+      <button id="btn-zoom-out" title="Zoom arrière">−</button>
+    </div>
+
+    <button id="btn-rotate-mode" title="Nord en haut / Cap en haut">🧭 Nord en haut</button>
+
     <button id="fab-settings" title="Paramètres">⚙</button>
 
     <div id="drawer-backdrop"></div>
@@ -429,44 +494,14 @@
           <button class="tbtn primary" id="btn-gps">▶ Activer GPS</button>
         </div>
 
-    <!-- NAV PARAMETERS + COMPASS -->
+    <!-- NAV PARAMETERS -->
     <div class="panel" id="left-panel">
-      <div class="section">
-        <p class="panel-title">Instrument de cap</p>
-        <div id="compass-wrap">
-          <svg id="compass-svg" width="180" height="180" viewBox="0 0 200 200"></svg>
-          <div id="compass-readout">
-            <div class="readout-block">
-              <div class="readout-label">Cap</div>
-              <div class="readout-value" id="ro-heading">---°</div>
-            </div>
-            <div class="readout-block">
-              <div class="readout-label">Route vers WPT</div>
-              <div class="readout-value small" id="ro-course">---°</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div class="section">
         <p class="panel-title">Paramètres de vol</p>
         <div class="field">
           <label>Vitesse de croisière (TAS)</label>
           <input type="number" id="in-speed" value="150" min="1"><span class="unit-suffix">km/h</span>
-        </div>
-        <div class="field row2">
-          <div>
-            <label>Vent — direction (°)</label>
-            <input type="number" id="in-winddir" value="0" min="0" max="360">
-          </div>
-          <div>
-            <label>Vent — vitesse (km/h)</label>
-            <input type="number" id="in-windspeed" value="0" min="0">
-          </div>
-        </div>
-        <div class="field">
-          <label>Déclinaison magnétique (° Est +, Ouest −)</label>
-          <input type="number" id="in-declination" value="0">
         </div>
         <div class="field row2">
           <div>
@@ -503,6 +538,22 @@
           Aérodromes (hors terrains ULM, déjà affichés séparément) tagués sur OpenStreetMap. Utile pour connaître
           les terrains environnants et leurs fréquences quand elles sont renseignées — à vérifier avant tout vol.
         </p>
+      </div>
+
+      <div class="section" id="metar-section">
+        <p class="panel-title">
+          Météo LFOT (METAR / TAF)
+          <button class="tbtn" id="btn-refresh-metar" style="font-size:10px;padding:4px 8px;">↻</button>
+        </p>
+        <div id="metar-box" class="weather-box">
+          <div class="weather-label">METAR</div>
+          <div class="weather-text" id="metar-text">Chargement…</div>
+        </div>
+        <div id="taf-box" class="weather-box">
+          <div class="weather-label">TAF</div>
+          <div class="weather-text" id="taf-text">Chargement…</div>
+        </div>
+        <p class="hint">Source : aviationweather.gov (NOAA), rediffusion du réseau OPMET international. LFOT n'émet pas toujours de bulletin (terrain à statut mixte) — l'absence de donnée ne veut pas dire absence de trafic.</p>
       </div>
 
       <div class="section" id="vac-section">
@@ -604,7 +655,11 @@
     airspaceLayer: null,
     planeMarker: null,
     routeLine: null,
-    activeLegLine: null
+    activeLegLine: null,
+    trackPoints: [],      // historique GPS pour la trace en pointillé
+    trackLine: null,
+    pred2Marker: null,
+    pred5Marker: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -650,11 +705,55 @@
     { position: 'topright', collapsed: true }
   ).addTo(map);
 
-  // Boutons + / − déplacés en bas à gauche pour ne pas gêner l'affichage du cap/vitesse en haut.
-  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  // Boutons de zoom personnalisés, en dehors de la carte : restent bien positionnés et lisibles
+  // même en mode "Cap en haut" (la carte elle-même pivote, ces boutons non).
+  $('btn-zoom-in').addEventListener('click', () => map.zoomIn());
+  $('btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
+  /* ======================= ORIENTATION (Nord en haut / Cap en haut) ======================= */
+  let rotationMode = 'north'; // 'north' | 'track'
+
+  function applyMapRotation(){
+    const angle = rotationMode === 'track' ? -state.currentHeading : 0;
+    $('map').style.transform = 'rotate(' + angle + 'deg)';
+  }
+
+  function setWaypointsDraggable(enabled){
+    state.waypoints.forEach(w => {
+      if (enabled) w.marker.dragging.enable(); else w.marker.dragging.disable();
+    });
+  }
+
+  $('btn-rotate-mode').addEventListener('click', () => {
+    rotationMode = (rotationMode === 'north') ? 'track' : 'north';
+    $('btn-rotate-mode').textContent = rotationMode === 'track' ? '🧭 Cap en haut' : '🧭 Nord en haut';
+    $('btn-rotate-mode').classList.toggle('on', rotationMode === 'track');
+    setWaypointsDraggable(rotationMode === 'north');
+    applyMapRotation();
+  });
+
+  // Clic sur la carte pour ajouter un point de route.
+  // En mode "Cap en haut", la carte est visuellement pivotée : on corrige la position du clic
+  // pour retrouver les bonnes coordonnées GPS (Leaflet ne connaît pas cette rotation CSS).
   map.on('click', (e) => {
+    if (rotationMode === 'track') return; // géré par le listener DOM corrigé ci-dessous
     addWaypoint(e.latlng.lat, e.latlng.lng);
+  });
+
+  $('map').addEventListener('click', (evt) => {
+    if (rotationMode !== 'track') return;
+    const rect = $('map').getBoundingClientRect();
+    const size = map.getSize();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = evt.clientX - cx;
+    const dy = evt.clientY - cy;
+    const a = rad(state.currentHeading); // inverse de la rotation visuelle (-cap)
+    const ux = dx * Math.cos(a) - dy * Math.sin(a);
+    const uy = dx * Math.sin(a) + dy * Math.cos(a);
+    const containerPoint = L.point(size.x / 2 + ux, size.y / 2 + uy);
+    const latlng = map.containerPointToLatLng(containerPoint);
+    addWaypoint(latlng.lat, latlng.lng);
   });
 
   /* ======================= NAV MATH ======================= */
@@ -671,6 +770,20 @@
     const y = Math.sin(rad(lon2-lon1)) * Math.cos(rad(lat2));
     const x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) - Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
     return norm360(deg(Math.atan2(y, x)));
+  }
+
+  // Point atteint en partant de (lat,lon), cap et distance donnés (km) — pour la projection 2/5 minutes.
+  function destinationPoint(lat, lon, bearingDeg, distKm){
+    const R = 6371.0088;
+    const delta = distKm / R;
+    const theta = rad(bearingDeg);
+    const phi1 = rad(lat), lambda1 = rad(lon);
+    const phi2 = Math.asin(Math.sin(phi1)*Math.cos(delta) + Math.cos(phi1)*Math.sin(delta)*Math.cos(theta));
+    const lambda2 = lambda1 + Math.atan2(
+      Math.sin(theta)*Math.sin(delta)*Math.cos(phi1),
+      Math.cos(delta) - Math.sin(phi1)*Math.sin(phi2)
+    );
+    return { lat: deg(phi2), lng: ((deg(lambda2) + 540) % 360) - 180 };
   }
 
   // Vector wind-triangle solver: returns {heading, groundSpeed, wca}
@@ -768,9 +881,6 @@
   /* ======================= LEGS / COMPUTATION ======================= */
   function computeLegs(){
     const tas = parseFloat($('in-speed').value) || 0;
-    const windDir = parseFloat($('in-winddir').value) || 0;
-    const windSpeed = parseFloat($('in-windspeed').value) || 0;
-    const decl = parseFloat($('in-declination').value) || 0;
     const conso = parseFloat($('in-conso').value) || 0;
 
     const legs = [];
@@ -779,8 +889,8 @@
       const b = state.waypoints[i];
       const dist = distanceKm(a.lat, a.lng, b.lat, b.lng);
       const tc = trueCourse(a.lat, a.lng, b.lat, b.lng);
-      const wt = windTriangle(tc, tas, windDir, windSpeed);
-      const magHdg = magnetic(wt.heading, decl);
+      const wt = windTriangle(tc, tas, 0, 0); // pas de correction de vent (champs retirés du tiroir)
+      const magHdg = wt.heading; // pas de déclinaison magnétique appliquée (champ retiré du tiroir)
       const ete = wt.groundSpeed > 0 ? (dist / wt.groundSpeed) * 60 : 0;
       const fuel = (ete/60) * conso;
       legs.push({ from:a, to:b, dist, tc, wca:wt.wca, magHdg, gs:wt.groundSpeed, ete, fuel });
@@ -790,45 +900,25 @@
 
   /* ======================= COMPASS (SIGNATURE) ======================= */
   function drawCompass(headingDeg, courseDeg){
-    const svg = $('compass-svg');
-    const cx=100, cy=100, r=88;
-    let html = '';
-    html += '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#0c1420" stroke="#233042" stroke-width="2"/>';
+    updateMiniCompass(headingDeg);
+  }
 
-    // rotating card with tick marks and cardinal labels — rotates opposite heading
-    html += '<g transform="rotate('+(-headingDeg)+' '+cx+' '+cy+')">';
-    for (let a=0; a<360; a+=10){
-      const isMajor = a % 30 === 0;
-      const len = isMajor ? 12 : 6;
-      const x1 = cx + (r-2)*Math.sin(rad(a));
-      const y1 = cy - (r-2)*Math.cos(rad(a));
-      const x2 = cx + (r-2-len)*Math.sin(rad(a));
-      const y2 = cy - (r-2-len)*Math.cos(rad(a));
-      html += '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(isMajor?'#ffb300':'#455266')+'" stroke-width="'+(isMajor?2:1)+'"/>';
-      if (isMajor){
-        const lx = cx + (r-24)*Math.sin(rad(a));
-        const ly = cy - (r-24)*Math.cos(rad(a)) + 4;
-        const label = a===0?'N':a===90?'E':a===180?'S':a===270?'O':(a/10);
-        html += '<text x="'+lx+'" y="'+ly+'" fill="#8291a3" font-size="10" font-family="JetBrains Mono" text-anchor="middle">'+label+'</text>';
-      }
-    }
-    // course bug (blue) — bearing to active waypoint, fixed relative to card i.e. rotates with card too since it's a true bearing
-    if (courseDeg !== null){
-      const bx = cx + (r-4)*Math.sin(rad(courseDeg));
-      const by = cy - (r-4)*Math.cos(rad(courseDeg));
-      html += '<polygon points="'+bx+','+(by-8)+' '+(bx-7)+','+(by+6)+' '+(bx+7)+','+(by+6)+'" fill="#4fc3f7"/>';
-    }
+  // Mini boussole : rond blanc, points cardinaux, et flèche rouge pointant toujours vers le nord réel.
+  function updateMiniCompass(headingDeg){
+    const svg = $('mini-compass-svg');
+    if (!svg) return;
+    const cx = 100, cy = 100, r = 92;
+    let html = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="#ffffff" stroke="#233042" stroke-width="5"/>';
+    html += '<g transform="rotate(' + (-headingDeg) + ' ' + cx + ' ' + cy + ')">';
+    [[0,'N'], [90,'E'], [180,'S'], [270,'O']].forEach(([a, label]) => {
+      const lx = cx + (r - 26) * Math.sin(rad(a));
+      const ly = cy - (r - 26) * Math.cos(rad(a)) + 7;
+      html += '<text x="' + lx + '" y="' + ly + '" fill="#233042" font-size="22" font-weight="700" ' +
+              'font-family="JetBrains Mono, monospace" text-anchor="middle">' + label + '</text>';
+    });
+    html += '<polygon points="100,14 84,112 100,90 116,112" fill="#e30613"/>';
     html += '</g>';
-
-    // fixed aircraft symbol pointing up
-    html += '<g>';
-    html += '<polygon points="'+cx+','+(cy-16)+' '+(cx-11)+','+(cy+12)+' '+cx+','+(cy+5)+' '+(cx+11)+','+(cy+12)+'" fill="#ffb300" stroke="#1a1300" stroke-width="1"/>';
-    html += '</g>';
-    html += '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1a2634" stroke-width="1"/>';
-
     svg.innerHTML = html;
-    $('ro-heading').textContent = Math.round(headingDeg) + '°';
-    $('ro-course').textContent = courseDeg !== null ? Math.round(courseDeg) + '°' : '---°';
   }
 
   /* ======================= RENDER ======================= */
@@ -888,6 +978,8 @@
     list.innerHTML = '';
     empty.style.display = state.waypoints.length ? 'none' : 'block';
 
+    let cumDist = 0, cumTime = 0, cumFuel = 0;
+
     state.waypoints.forEach((w, i) => {
       const card = document.createElement('div');
       card.className = 'wpt-card' + (w.id === state.activeWaypointId ? ' active' : '');
@@ -905,16 +997,26 @@
 
       const leg = legs[i-1];
       if (leg){
+        cumDist += leg.dist;
+        cumTime += leg.ete;
+        cumFuel += leg.fuel;
+
         const legDiv = document.createElement('div');
         legDiv.className = 'leg-data';
         legDiv.innerHTML =
           '<span>Route<b>'+Math.round(leg.tc)+'°</b></span>' +
-          '<span>Cap mag.<b>'+Math.round(leg.magHdg)+'°</b></span>' +
+          '<span>Cap<b>'+Math.round(leg.magHdg)+'°</b></span>' +
           '<span>Distance<b>'+leg.dist.toFixed(1)+' km</b></span>' +
           '<span>Vs/sol<b>'+Math.round(leg.gs)+' km/h</b></span>' +
           '<span>Temps<b>'+fmtMin(leg.ete)+'</b></span>' +
           '<span>Carburant<b>'+leg.fuel.toFixed(1)+' L</b></span>';
         card.appendChild(legDiv);
+
+        const cumDiv = document.createElement('div');
+        cumDiv.className = 'cum-data';
+        cumDiv.innerHTML =
+          'Cumul depuis le départ : <b>'+cumDist.toFixed(1)+' km</b> · <b>'+fmtMin(cumTime)+'</b> · <b>'+cumFuel.toFixed(1)+' L</b>';
+        card.appendChild(cumDiv);
       }
       list.appendChild(card);
     });
@@ -979,6 +1081,24 @@
   }
 
   /* ======================= GPS ======================= */
+  function predIcon(label){
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:20px;height:20px;border-radius:50%;background:#0f1620;' +
+            'border:2px solid #e7edf5;display:flex;align-items:center;justify-content:center;' +
+            'font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;color:#e7edf5;">' + label + '</div>',
+      iconSize: [20,20],
+      iconAnchor: [10,10]
+    });
+  }
+  function updatePredMarker(marker, point, label){
+    if (!marker){
+      return L.marker([point.lat, point.lng], { icon: predIcon(label), zIndexOffset: 900 }).addTo(map);
+    }
+    marker.setLatLng([point.lat, point.lng]);
+    return marker;
+  }
+
   function planeIcon(headingDeg){
     return L.divIcon({
       className: 'plane-icon',
@@ -1013,6 +1133,17 @@
       state.planeMarker.setIcon(planeIcon(heading));
     }
 
+    // Trace GPS en pointillé
+    state.trackPoints.push([lat, lng]);
+    if (state.trackPoints.length > 3000) state.trackPoints.shift();
+    if (!state.trackLine){
+      state.trackLine = L.polyline(state.trackPoints, {
+        color: '#3ddc84', weight: 2, opacity: .8, dashArray: '2,7'
+      }).addTo(map);
+    } else {
+      state.trackLine.setLatLngs(state.trackPoints);
+    }
+
     $('gps-text').textContent = lat.toFixed(4)+', '+lng.toFixed(4)+
       (pos.coords.accuracy ? '  (±'+Math.round(pos.coords.accuracy)+'m)' : '');
 
@@ -1023,8 +1154,18 @@
     const altFt = (alt != null && !isNaN(alt)) ? alt * 3.28084 : null;
     $('hud-altitude').textContent = altFt !== null ? Math.round(altFt) + ' ft' : '--- ft';
 
+    // Projection à 2 et 5 minutes, façon SDVFR (utilise la vitesse GPS, sinon la vitesse de croisière saisie)
+    const projSpeed = speedKmh !== null && speedKmh > 3 ? speedKmh : (parseFloat($('in-speed').value) || 0);
+    if (projSpeed > 0){
+      const p2 = destinationPoint(lat, lng, heading, projSpeed * (2/60));
+      const p5 = destinationPoint(lat, lng, heading, projSpeed * (5/60));
+      state.pred2Marker = updatePredMarker(state.pred2Marker, p2, "2'");
+      state.pred5Marker = updatePredMarker(state.pred5Marker, p5, "5'");
+    }
+
     renderActiveLeg();
     updateCompassDisplay();
+    applyMapRotation();
   }
 
   function onGpsError(err){
@@ -1038,6 +1179,27 @@
     $('gps-text').textContent = 'GPS: ' + msg;
     $('gps-dot').classList.remove('live');
   }
+
+  /* ======================= WAKE LOCK (empêche la mise en veille pendant le GPS) ======================= */
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try {
+      if ('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch(err){
+      // Silencieux : sur certains navigateurs (ou hors onglet actif), la demande peut échouer sans gravité.
+    }
+  }
+  function releaseWakeLock(){
+    if (wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.gpsActive && !wakeLock){
+      requestWakeLock();
+    }
+  });
 
   function startGps(){
     if (!window.isSecureContext){
@@ -1057,6 +1219,7 @@
     $('btn-gps').textContent = '■ Arrêter GPS';
     $('btn-gps').classList.remove('primary');
     $('btn-gps').classList.add('on');
+    requestWakeLock();
   }
 
   function stopGps(){
@@ -1067,6 +1230,7 @@
     $('btn-gps').textContent = '▶ Activer GPS';
     $('btn-gps').classList.remove('on');
     $('btn-gps').classList.add('primary');
+    releaseWakeLock();
   }
 
   function toggleGps(){
@@ -1083,9 +1247,6 @@
       waypoints: state.waypoints.map(w => ({ name:w.name, lat:w.lat, lng:w.lng })),
       params: {
         speed: $('in-speed').value,
-        winddir: $('in-winddir').value,
-        windspeed: $('in-windspeed').value,
-        declination: $('in-declination').value,
         conso: $('in-conso').value,
         fuel: $('in-fuel').value
       }
@@ -1110,9 +1271,6 @@
         (data.waypoints||[]).forEach(w => addWaypoint(w.lat, w.lng, w.name));
         if (data.params){
           $('in-speed').value = data.params.speed ?? 80;
-          $('in-winddir').value = data.params.winddir ?? 0;
-          $('in-windspeed').value = data.params.windspeed ?? 0;
-          $('in-declination').value = data.params.declination ?? 0;
           $('in-conso').value = data.params.conso ?? 15;
           $('in-fuel').value = data.params.fuel ?? 60;
         }
@@ -1380,19 +1538,19 @@
     return L.divIcon({
       className: '',
       html:
-        '<svg width="24" height="24" viewBox="0 0 24 24">' +
-          '<circle cx="12" cy="12" r="7.5" fill="' + color + '33" stroke="' + color + '" stroke-width="2"/>' +
+        '<svg width="26" height="26" viewBox="0 0 26 26">' +
+          '<circle cx="13" cy="13" r="8.5" fill="' + color + '99" stroke="' + color + '" stroke-width="2.6"/>' +
           (hasAxis
-            ? '<line x1="12" y1="1.5" x2="12" y2="22.5" stroke="' + color + '" stroke-width="2.6" ' +
-              'transform="rotate(' + bearingDeg + ' 12 12)"/>'
-            : '<circle cx="12" cy="12" r="2" fill="' + color + '"/>') +
+            ? '<line x1="13" y1="1" x2="13" y2="25" stroke="' + color + '" stroke-width="3" ' +
+              'transform="rotate(' + bearingDeg + ' 13 13)"/>'
+            : '<circle cx="13" cy="13" r="2.4" fill="#ffffff"/>') +
         '</svg>',
-      iconSize: [24,24],
-      iconAnchor: [12,12]
+      iconSize: [26,26],
+      iconAnchor: [13,13]
     });
   }
-  function ulmIcon(bearingDeg){ return aeroMarkerIcon('#3ddc84', bearingDeg); }
-  function aerodromeIcon(bearingDeg){ return aeroMarkerIcon('#b98aff', bearingDeg); }
+  function ulmIcon(bearingDeg){ return aeroMarkerIcon('#0d6b2e', bearingDeg); }
+  function aerodromeIcon(bearingDeg){ return aeroMarkerIcon('#1e3a8a', bearingDeg); }
 
   // Récupère les pistes OSM (aeroway=runway) de la zone pour orienter l'icône façon carte OACI
   // (cercle traversé par l'axe de piste). Non garanti pour tous les terrains (dépend des données OSM).
@@ -1710,6 +1868,39 @@
     map.fitBounds(L.latLngBounds(LFOT_VRP.map(p => [p.lat, p.lng])), { padding: [60,60] });
   });
 
+  /* ======================= MÉTÉO LFOT (METAR / TAF) ======================= */
+  function extractWeatherText(entry, keys){
+    if (!entry) return null;
+    for (const k of keys){
+      if (entry[k]) return entry[k];
+    }
+    return null;
+  }
+
+  async function loadMetarTaf(){
+    $('metar-text').textContent = 'Chargement…';
+    $('taf-text').textContent = 'Chargement…';
+    try {
+      const [metarRes, tafRes] = await Promise.all([
+        fetch('https://aviationweather.gov/api/data/metar?ids=LFOT&format=json'),
+        fetch('https://aviationweather.gov/api/data/taf?ids=LFOT&format=json')
+      ]);
+      const metarJson = metarRes.ok ? await metarRes.json() : [];
+      const tafJson = tafRes.ok ? await tafRes.json() : [];
+
+      const metarText = extractWeatherText(metarJson[0], ['rawOb','raw_text','rawText','metar_text']);
+      const tafText = extractWeatherText(tafJson[0], ['rawTAF','raw_text','rawText','taf_text']);
+
+      $('metar-text').textContent = metarText || "Aucun METAR disponible pour LFOT actuellement.";
+      $('taf-text').textContent = tafText || "Aucun TAF disponible pour LFOT actuellement.";
+    } catch(err){
+      $('metar-text').textContent = "Échec du chargement (" + err.message + ").";
+      $('taf-text').textContent = "Échec du chargement (" + err.message + ").";
+    }
+  }
+  $('btn-refresh-metar').addEventListener('click', loadMetarTaf);
+  loadMetarTaf();
+
   /* ======================= HELP ======================= */
   $('btn-help').addEventListener('click', () => {
     alert(
@@ -1724,7 +1915,7 @@
   });
 
   /* ======================= INPUT LISTENERS ======================= */
-  ['in-speed','in-winddir','in-windspeed','in-declination','in-conso','in-fuel'].forEach(id => {
+  ['in-speed','in-conso','in-fuel'].forEach(id => {
     $(id).addEventListener('input', () => { renderPlanList(); });
   });
 
