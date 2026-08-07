@@ -138,7 +138,7 @@
   /* ---------- Mini boussole (haut à droite, toujours visible) ---------- */
   #mini-compass-wrap{
     position:absolute;
-    top:64px;
+    top:74px;
     right:14px;
     z-index:900;
     width:52px;height:52px;
@@ -173,7 +173,7 @@
   /* ---------- Bascule Nord en haut / Cap en haut (sous la mini boussole) ---------- */
   #btn-rotate-mode{
     position:absolute;
-    top:126px;
+    top:136px;
     right:14px;
     z-index:900;
     width:52px;height:52px;
@@ -190,44 +190,79 @@
 
   #fab-settings{
     position:absolute;
-    bottom:22px;
-    right:18px;
-    z-index:1500;
-    width:54px;height:54px;
+    top:198px;
+    right:14px;
+    z-index:900;
+    width:52px;height:52px;
     border-radius:50%;
-    background:var(--amber);
-    color:#1a1300;
-    border:none;
-    font-size:22px;
-    box-shadow:0 4px 14px rgba(0,0,0,.5);
-    cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-  }
-  #fab-settings:active{transform:scale(0.95);}
-
-  #fab-timer{
-    position:absolute;
-    bottom:86px;
-    right:18px;
-    z-index:1500;
-    min-width:54px;
-    height:40px;
-    padding:0 12px;
-    border-radius:20px;
     background:var(--panel-2);
     color:var(--text);
     border:1px solid var(--border-soft);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #fab-settings svg{width:22px;height:22px;fill:currentColor;}
+  #fab-settings:active{transform:scale(0.95);}
+
+  #btn-info{
+    position:absolute;
+    bottom:22px;
+    right:18px;
+    z-index:1500;
+    width:44px;height:44px;
+    border-radius:50%;
+    background:var(--panel-2);
+    color:var(--amber);
+    border:1.5px solid var(--amber);
     font-family:var(--font-mono);
-    font-size:13px;
     font-weight:700;
+    font-size:18px;
+    font-style:italic;
     box-shadow:0 4px 14px rgba(0,0,0,.5);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
-    gap:4px;
-    white-space:nowrap;
   }
-  #fab-timer.on{background:var(--red);color:#fff;border-color:var(--red);}
-  #fab-timer:active{transform:scale(0.96);}
+  #btn-info:active{transform:scale(0.95);}
+
+  #info-modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);
+    z-index:2990;
+  }
+  #info-modal-backdrop.hidden{display:none;}
+  #info-modal{
+    position:fixed;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    z-index:3000;
+    width:min(480px,90vw);
+    max-height:80vh;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,.6);
+    display:flex;flex-direction:column;
+  }
+  #info-modal.hidden{display:none;}
+  #info-modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  #info-modal-header h2{margin:0;font-size:15px;color:var(--amber);}
+  #info-modal-close{
+    background:none;border:1px solid var(--border-soft);color:var(--text);
+    width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;
+  }
+  #info-modal-body{overflow-y:auto;padding:16px 18px;font-size:13px;line-height:1.6;color:var(--text);}
+  #info-modal-body h3{font-size:12px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px;}
+  #info-modal-body h3:first-child{margin-top:0;}
+  #info-modal-body ul{margin:0;padding-left:18px;}
+  #info-modal-body li{margin-bottom:5px;}
+
+  #hud-timer-block{cursor:pointer;pointer-events:auto;}
+  .hud-value.timer{color:var(--text);}
+  #hud-timer-block.on .hud-value.timer{color:var(--red);}
 
   /* ---------- DRAWER (tiroir latéral avec tous les réglages) ---------- */
   #drawer-backdrop{
@@ -373,6 +408,26 @@
     font-family:var(--font-ui);font-weight:600;font-size:13px;padding:2px 0;
   }
   .wpt-actions{display:flex;gap:5px;}
+
+  /* ---------- AIRCRAFT LIST ---------- */
+  #aircraft-list{display:flex;flex-direction:column;gap:8px;}
+  .aircraft-card{
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    border-radius:7px;
+    padding:9px 10px;
+    cursor:pointer;
+  }
+  .aircraft-card.selected{border-color:var(--amber);background:rgba(255,179,0,.08);}
+  .aircraft-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .aircraft-callsign{font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--text);}
+  .aircraft-model{font-size:11px;color:var(--text-dim);}
+  .aircraft-data{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+    font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
+    margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-soft);
+  }
+  .aircraft-data span b{display:block;color:var(--text);font-size:11.5px;}
   .icon-btn{
     background:none;border:1px solid var(--border-soft);color:var(--text-dim);
     width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:11px;
@@ -418,9 +473,25 @@
   .leaflet-control-zoom a{background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--border-soft)!important;}
   .leaflet-control-attribution{background:rgba(15,22,32,.8)!important;color:var(--text-dim2)!important;}
   .leaflet-control-attribution a{color:var(--text-dim)!important;}
-  .leaflet-control-layers{background:var(--panel-2)!important;color:var(--text)!important;border:1px solid var(--border-soft)!important;}
-  .leaflet-control-layers-toggle{filter:invert(1) brightness(1.4);}
+  .leaflet-control-layers{
+    background:var(--panel-2)!important;
+    color:var(--text)!important;
+    border:1px solid var(--border-soft)!important;
+    box-shadow:0 2px 8px rgba(0,0,0,.4)!important;
+  }
+  .leaflet-control-layers:not(.leaflet-control-layers-expanded){
+    border-radius:50%!important;
+    overflow:hidden;
+  }
+  .leaflet-control-layers-toggle{
+    width:52px!important;height:52px!important;
+    background-image:none!important;
+    display:flex!important;align-items:center;justify-content:center;
+  }
+  .leaflet-control-layers-toggle svg{width:24px;height:24px;fill:var(--text);}
+  .leaflet-control-layers-expanded{padding:10px 12px;border-radius:10px;}
   .leaflet-control-layers label{font-family:var(--font-ui);font-size:12.5px;}
+  .leaflet-top.leaflet-right{top:14px!important;right:14px!important;}
   .leg-tooltip{
     background:var(--panel-2)!important;
     color:var(--amber)!important;
@@ -511,6 +582,11 @@
         <div class="hud-label">Altitude</div>
         <div class="hud-value alt" id="hud-altitude">--- ft</div>
       </div>
+      <div class="hud-sep"></div>
+      <div class="hud-block" id="hud-timer-block" title="Chronomètre (double-clic pour réinitialiser)">
+        <div class="hud-label">Chrono</div>
+        <div class="hud-value timer" id="hud-timer">00:00</div>
+      </div>
     </div>
 
     <div id="mini-compass-wrap">
@@ -524,9 +600,22 @@
 
     <button id="btn-rotate-mode" title="Nord en haut / Cap en haut">⇧</button>
 
-    <button id="fab-timer" title="Chronomètre (double-clic pour réinitialiser)">⏱ 00:00</button>
 
-    <button id="fab-settings" title="Paramètres">⚙</button>
+
+    <button id="fab-settings" title="Paramètres">
+      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.62.06-.94 0-.32-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.04-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.44.17-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.63-.07.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+
+    <button id="btn-info" title="Notice / mode d'emploi">i</button>
+
+    <div id="info-modal-backdrop" class="hidden"></div>
+    <div id="info-modal" class="hidden">
+      <div id="info-modal-header">
+        <h2>Notice NAVULM</h2>
+        <button id="info-modal-close">✕</button>
+      </div>
+      <div id="info-modal-body"></div>
+    </div>
 
     <div id="drawer-backdrop"></div>
     <div id="drawer">
@@ -548,6 +637,50 @@
 
     <!-- NAV PARAMETERS -->
     <div class="panel" id="left-panel">
+
+      <div class="section" id="aircraft-section">
+        <p class="panel-title">Mes avions</p>
+        <div id="aircraft-list"></div>
+        <div id="aircraft-empty" class="hint" style="display:none;">Aucun avion enregistré. Ajoute ton premier appareil ci-dessous.</div>
+
+        <button class="tbtn" id="btn-add-aircraft" style="width:100%;justify-content:center;margin-top:8px;">+ Ajouter un avion</button>
+
+        <div id="aircraft-form" style="display:none;margin-top:10px;">
+          <div class="field">
+            <label>Indicatif</label>
+            <input type="text" id="air-indicatif" placeholder="F-JXXX">
+          </div>
+          <div class="field">
+            <label>Modèle</label>
+            <input type="text" id="air-modele" placeholder="Ex : Ikarus C42">
+          </div>
+          <div class="field row2">
+            <div>
+              <label>Vitesse croisière</label>
+              <input type="number" id="air-vc" min="1" value="150"><span class="unit-suffix">km/h</span>
+            </div>
+            <div>
+              <label>Consommation</label>
+              <input type="number" id="air-conso" min="0" value="15"><span class="unit-suffix">L/h</span>
+            </div>
+          </div>
+          <div class="field row2">
+            <div>
+              <label>Vitesse montée</label>
+              <input type="number" id="air-vm" min="1" value="110"><span class="unit-suffix">km/h</span>
+            </div>
+            <div>
+              <label>Vitesse descente</label>
+              <input type="number" id="air-vd" min="1" value="140"><span class="unit-suffix">km/h</span>
+            </div>
+          </div>
+          <div class="field row2">
+            <button class="tbtn primary" id="btn-save-aircraft" style="width:100%;justify-content:center;">Enregistrer</button>
+            <button class="tbtn" id="btn-cancel-aircraft" style="width:100%;justify-content:center;">Annuler</button>
+          </div>
+        </div>
+        <p class="hint">Les temps et la consommation du plan de vol utilisent la vitesse de croisière et la consommation de l'avion sélectionné. Les vitesses de montée/descente sont indicatives (non utilisées dans le calcul des étapes pour l'instant).</p>
+      </div>
 
       <div class="section">
         <p class="panel-title">Paramètres de vol</p>
@@ -620,7 +753,7 @@
           <div class="weather-label">TAF</div>
           <div class="weather-text" id="taf-text">Chargement…</div>
         </div>
-        <p class="hint">Source : aviationweather.gov (NOAA), rediffusion du réseau OPMET international. LFOT n'émet pas toujours de bulletin (terrain à statut mixte) — l'absence de donnée ne veut pas dire absence de trafic.</p>
+        <p class="hint">Source : aviationweather.gov (NOAA), rediffusion du réseau OPMET international, via un proxy CORS public. LFOT n'émet pas toujours de bulletin (terrain à statut mixte) — l'absence de donnée ne veut pas dire absence de trafic.</p>
       </div>
 
       <div class="section" id="vac-section">
@@ -691,6 +824,7 @@
       <p class="hint" style="margin-bottom:10px;">Cliquez sur la carte pour ajouter un point de route. Glissez un point pour le déplacer.</p>
       <div id="wpt-list"></div>
       <div id="empty-plan">Aucun point de route. Cliquez sur la carte pour commencer à tracer votre navigation.</div>
+      <button class="tbtn primary" id="btn-navlog" style="width:100%;justify-content:center;margin-top:10px;">🖨 Log de navigation</button>
     </div>
 
       </div>
@@ -727,6 +861,7 @@
     trackLine: null,
     pred2Marker: null,
     pred5Marker: null,
+    predVectorLine: null,
     notifiedForWaypointId: null
   };
 
@@ -734,6 +869,133 @@
   const rad = (d) => d * Math.PI / 180;
   const deg = (r) => r * 180 / Math.PI;
   const norm360 = (d) => ((d % 360) + 360) % 360;
+
+  /* ======================= AVIONS (IndexedDB) ======================= */
+  const AIRCRAFT_DB_NAME = 'navulm-aircraft';
+  const AIRCRAFT_STORE = 'aircraft';
+  let aircraftDbPromise = null;
+  let selectedAircraftId = null;
+  let selectedAircraftData = null;
+
+  function openAircraftDB(){
+    if (aircraftDbPromise) return aircraftDbPromise;
+    aircraftDbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(AIRCRAFT_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore(AIRCRAFT_STORE, { keyPath: 'id', autoIncrement: true });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return aircraftDbPromise;
+  }
+  async function listAircraft(){
+    try {
+      const db = await openAircraftDB();
+      return await new Promise((resolve) => {
+        const req = db.transaction(AIRCRAFT_STORE, 'readonly').objectStore(AIRCRAFT_STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch(err){ return []; }
+  }
+  async function addAircraftToDB(obj){
+    const db = await openAircraftDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(AIRCRAFT_STORE, 'readwrite');
+      const req = tx.objectStore(AIRCRAFT_STORE).add(obj);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function deleteAircraftFromDB(id){
+    const db = await openAircraftDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(AIRCRAFT_STORE, 'readwrite');
+      tx.objectStore(AIRCRAFT_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+    });
+  }
+
+  function applyAircraftToParams(a){
+    selectedAircraftData = a;
+    $('in-speed').value = a.vc;
+    $('in-conso').value = a.conso;
+    renderPlanList();
+  }
+
+  async function renderAircraftList(){
+    const list = $('aircraft-list');
+    const empty = $('aircraft-empty');
+    const aircrafts = await listAircraft();
+    list.innerHTML = '';
+    empty.style.display = aircrafts.length ? 'none' : 'block';
+
+    aircrafts.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'aircraft-card' + (a.id === selectedAircraftId ? ' selected' : '');
+      card.innerHTML =
+        '<div class="aircraft-head">' +
+          '<div><div class="aircraft-callsign">' + a.indicatif + '</div>' +
+          '<div class="aircraft-model">' + a.modele + '</div></div>' +
+          '<button class="icon-btn del" title="Supprimer" data-id="' + a.id + '">✕</button>' +
+        '</div>' +
+        '<div class="aircraft-data">' +
+          '<span>Croisière<b>' + a.vc + ' km/h</b></span>' +
+          '<span>Montée<b>' + a.vm + ' km/h</b></span>' +
+          '<span>Descente<b>' + a.vd + ' km/h</b></span>' +
+          '<span>Conso<b>' + a.conso + ' L/h</b></span>' +
+        '</div>';
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.del')) return;
+        selectedAircraftId = a.id;
+        applyAircraftToParams(a);
+        renderAircraftList();
+      });
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll('.icon-btn.del').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id, 10);
+        await deleteAircraftFromDB(id);
+        if (selectedAircraftId === id){ selectedAircraftId = null; selectedAircraftData = null; }
+        renderAircraftList();
+      });
+    });
+  }
+
+  $('btn-add-aircraft').addEventListener('click', () => {
+    $('aircraft-form').style.display = 'block';
+    $('btn-add-aircraft').style.display = 'none';
+  });
+  $('btn-cancel-aircraft').addEventListener('click', () => {
+    $('aircraft-form').style.display = 'none';
+    $('btn-add-aircraft').style.display = 'flex';
+  });
+  $('btn-save-aircraft').addEventListener('click', async () => {
+    const indicatif = $('air-indicatif').value.trim();
+    const modele = $('air-modele').value.trim();
+    const vc = parseFloat($('air-vc').value);
+    const vm = parseFloat($('air-vm').value);
+    const vd = parseFloat($('air-vd').value);
+    const conso = parseFloat($('air-conso').value);
+    if (!indicatif || isNaN(vc) || isNaN(conso)){
+      alert('Merci de renseigner au moins l\'indicatif, la vitesse de croisière et la consommation.');
+      return;
+    }
+    const id = await addAircraftToDB({ indicatif, modele: modele || '—', vc, vm: vm||vc, vd: vd||vc, conso });
+    $('air-indicatif').value = '';
+    $('air-modele').value = '';
+    $('aircraft-form').style.display = 'none';
+    $('btn-add-aircraft').style.display = 'flex';
+    selectedAircraftId = id;
+    await renderAircraftList();
+    applyAircraftToParams({ indicatif, modele, vc, vm, vd, conso });
+  });
+
+  renderAircraftList();
 
   /* ======================= CACHE HORS-LIGNE (IndexedDB) ======================= */
   const TILE_DB_NAME = 'navulm-tiles';
@@ -885,7 +1147,7 @@
     }
   );
 
-  L.control.layers(
+  const layersControl = L.control.layers(
     {
       'Fond OpenStreetMap': osmLayer,
       'Vue satellite (IGN)': satelliteLayer,
@@ -895,6 +1157,14 @@
     null,
     { position: 'topright', collapsed: true }
   ).addTo(map);
+
+  const layersToggleEl = layersControl.getContainer().querySelector('.leaflet-control-layers-toggle');
+  if (layersToggleEl){
+    layersToggleEl.innerHTML =
+      '<svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/>' +
+      '<path d="M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+      '<path d="M2 17l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  }
 
   // Boutons de zoom personnalisés, en dehors de la carte : restent bien positionnés et lisibles
   // même en mode "Cap en haut" (la carte elle-même pivote, ces boutons non).
@@ -1387,13 +1657,24 @@
     const altFt = (alt != null && !isNaN(alt)) ? alt * 3.28084 : null;
     $('hud-altitude').textContent = altFt !== null ? Math.round(altFt) + ' ft' : '--- ft';
 
-    // Projection à 2 et 5 minutes, façon SDVFR (utilise la vitesse GPS, sinon la vitesse de croisière saisie)
+    // Projection à 2 et 5 minutes, façon SDVFR (utilise la vitesse GPS réelle, sinon celle de l'avion sélectionné)
     const projSpeed = speedKmh !== null && speedKmh > 3 ? speedKmh : (parseFloat($('in-speed').value) || 0);
     if (projSpeed > 0){
       const p2 = destinationPoint(lat, lng, heading, projSpeed * (2/60));
       const p5 = destinationPoint(lat, lng, heading, projSpeed * (5/60));
       state.pred2Marker = updatePredMarker(state.pred2Marker, p2, "2'");
       state.pred5Marker = updatePredMarker(state.pred5Marker, p5, "5'");
+
+      // Vecteur reliant l'avion à ses positions prévues (2' puis 5'), selon le cap et la vitesse actuels.
+      const vectorPts = [[lat, lng], [p2.lat, p2.lng], [p5.lat, p5.lng]];
+      if (!state.predVectorLine){
+        state.predVectorLine = L.polyline(vectorPts, { color:'#e7edf5', weight:1.6, opacity:.85, dashArray:'1,5' }).addTo(map);
+      } else {
+        state.predVectorLine.setLatLngs(vectorPts);
+      }
+    } else if (state.predVectorLine){
+      map.removeLayer(state.predVectorLine);
+      state.predVectorLine = null;
     }
 
     checkTurnPointAlert(lat, lng, speedKmh);
@@ -1525,6 +1806,92 @@
     if (state.waypoints.length && !confirm('Effacer tout le plan de vol ?')) return;
     clearPlan();
   });
+
+  /* ======================= LOG DE NAVIGATION (imprimable) ======================= */
+  function generateNavLog(){
+    const legs = computeLegs();
+    if (legs.length === 0){
+      alert('Ajoutez au moins deux points de route pour générer un log de navigation.');
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const aircraft = selectedAircraftData;
+    const conso = parseFloat($('in-conso').value) || 0;
+    const fuelOnboard = parseFloat($('in-fuel').value) || 0;
+
+    let rows = '';
+    let cumDist = 0, cumTime = 0, cumFuel = 0;
+    legs.forEach((leg, i) => {
+      cumDist += leg.dist; cumTime += leg.ete; cumFuel += leg.fuel;
+      rows += '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td>' + leg.from.name + ' → ' + leg.to.name + '</td>' +
+        '<td>' + Math.round(leg.tc) + '°</td>' +
+        '<td>' + Math.round(leg.gs) + ' km/h</td>' +
+        '<td>' + leg.dist.toFixed(1) + ' km</td>' +
+        '<td>' + fmtMin(leg.ete) + '</td>' +
+        '<td>' + leg.fuel.toFixed(1) + ' L</td>' +
+        '<td>' + cumDist.toFixed(1) + ' km</td>' +
+        '<td>' + fmtMin(cumTime) + '</td>' +
+        '<td>' + cumFuel.toFixed(1) + ' L</td>' +
+        '</tr>';
+    });
+
+    const reserve = (30/60) * conso;
+    const margin = fuelOnboard - cumFuel - reserve;
+
+    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Log de navigation</title><style>' +
+      'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}' +
+      'h1{font-size:20px;margin-bottom:2px;}' +
+      '.sub{color:#555;font-size:13px;margin-bottom:18px;}' +
+      '.hdr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;}' +
+      '.hdr-card{border:1px solid #ccc;border-radius:6px;padding:8px 10px;}' +
+      '.hdr-card .l{font-size:10px;text-transform:uppercase;color:#777;letter-spacing:.5px;}' +
+      '.hdr-card .v{font-size:15px;font-weight:700;margin-top:2px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:12.5px;}' +
+      'th,td{border:1px solid #bbb;padding:6px 7px;text-align:left;}' +
+      'th{background:#eee;}' +
+      'tfoot td{font-weight:700;background:#f5f5f5;}' +
+      '.margin-warn{color:#b00000;}' +
+      '.margin-ok{color:#0a7a2f;}' +
+      '.print-btn{margin-top:18px;padding:8px 16px;font-size:13px;cursor:pointer;}' +
+      '@media print{.print-btn{display:none;}}' +
+      '</style></head><body>' +
+      '<h1>Log de navigation — NAVULM</h1>' +
+      '<div class="sub">' + dateStr + '</div>' +
+      '<div class="hdr-grid">' +
+        '<div class="hdr-card"><div class="l">Avion</div><div class="v">' + (aircraft ? aircraft.indicatif : '—') + '</div></div>' +
+        '<div class="hdr-card"><div class="l">Modèle</div><div class="v">' + (aircraft ? aircraft.modele : '—') + '</div></div>' +
+        '<div class="hdr-card"><div class="l">Vitesse croisière</div><div class="v">' + (parseFloat($('in-speed').value)||0) + ' km/h</div></div>' +
+        '<div class="hdr-card"><div class="l">Consommation</div><div class="v">' + conso + ' L/h</div></div>' +
+      '</div>' +
+      '<table><thead><tr>' +
+        '<th>#</th><th>Étape</th><th>Route</th><th>Vs/sol</th><th>Distance</th><th>Temps</th><th>Carburant</th>' +
+        '<th>Cumul dist.</th><th>Cumul temps</th><th>Cumul carb.</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr>' +
+        '<td colspan="4">Totaux</td>' +
+        '<td>' + cumDist.toFixed(1) + ' km</td>' +
+        '<td>' + fmtMin(cumTime) + '</td>' +
+        '<td>' + cumFuel.toFixed(1) + ' L</td>' +
+        '<td colspan="3">Carburant à bord : ' + fuelOnboard.toFixed(1) + ' L — Marge (réserve 30 min incluse) : ' +
+          '<span class="' + (margin>=0?'margin-ok':'margin-warn') + '">' + (margin>=0?'+':'') + margin.toFixed(1) + ' L</span></td>' +
+      '</tr></tfoot></table>' +
+      '<button class="print-btn" onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button>' +
+      '</body></html>';
+
+    const w = window.open('', '_blank');
+    if (!w){
+      alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les pop-ups pour NAVULM puis réessaie.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+  $('btn-navlog').addEventListener('click', generateNavLog);
 
   /* ======================= AIRSPACES (OpenAIP, optional) ======================= */
   $('btn-settings').addEventListener('click', async () => {
@@ -2204,10 +2571,15 @@
   async function loadMetarTaf(){
     $('metar-text').textContent = 'Chargement…';
     $('taf-text').textContent = 'Chargement…';
+    // aviationweather.gov ne renvoie pas d'en-tête CORS pour les sites tiers : on passe par un proxy
+    // CORS public (gratuit, sans clé) qui relaie la même donnée officielle NOAA/OPMET.
+    const proxy = 'https://api.allorigins.win/raw?url=';
+    const metarUrl = encodeURIComponent('https://aviationweather.gov/api/data/metar?ids=LFOT&format=json');
+    const tafUrl = encodeURIComponent('https://aviationweather.gov/api/data/taf?ids=LFOT&format=json');
     try {
       const [metarRes, tafRes] = await Promise.all([
-        fetch('https://aviationweather.gov/api/data/metar?ids=LFOT&format=json'),
-        fetch('https://aviationweather.gov/api/data/taf?ids=LFOT&format=json')
+        fetch(proxy + metarUrl),
+        fetch(proxy + tafUrl)
       ]);
       const metarJson = metarRes.ok ? await metarRes.json() : [];
       const tafJson = tafRes.ok ? await tafRes.json() : [];
@@ -2226,17 +2598,49 @@
   loadMetarTaf();
 
   /* ======================= HELP ======================= */
-  $('btn-help').addEventListener('click', () => {
-    alert(
-      "NAVULM — mode d'emploi rapide\n\n" +
-      "• Cliquez sur la carte pour ajouter des points de route.\n" +
-      "• Glissez un point pour le repositionner, cliquez ✕ pour le supprimer.\n" +
-      "• Renseignez vitesse, vent et déclinaison pour un calcul de navigation précis.\n" +
-      "• Activez le GPS pour suivre votre position et votre cap en temps réel.\n" +
-      "• ◎ définit le point actif : la route et le cap affichés à l'instrument pointent vers lui.\n" +
-      "• Enregistrez votre plan en JSON pour le recharger plus tard (aucune donnée n'est stockée en ligne)."
-    );
-  });
+  const INFO_CONTENT =
+    '<h3>Plan de vol</h3><ul>' +
+    '<li>Cliquez sur la carte pour ajouter un point de route.</li>' +
+    '<li>Glissez un point pour le repositionner, ✕ pour le supprimer.</li>' +
+    '<li>◎ définit le point actif : la mini boussole et l\'alerte de point tournant pointent vers lui.</li>' +
+    '<li>Chaque point affiche le cumul de distance, temps et carburant depuis le départ.</li>' +
+    '</ul>' +
+    '<h3>Avions</h3><ul>' +
+    '<li>Enregistrez vos avions (indicatif, vitesses, consommation) dans "Mes avions".</li>' +
+    '<li>Sélectionner un avion remplit automatiquement la vitesse de croisière et la consommation utilisées pour les calculs.</li>' +
+    '</ul>' +
+    '<h3>Navigation en vol</h3><ul>' +
+    '<li>Le GPS démarre automatiquement à l\'ouverture (nécessite une adresse https://).</li>' +
+    '<li>Bandeau du bas : cap, vitesse, altitude et chronomètre (tap pour démarrer/pause, double-tap pour réinitialiser).</li>' +
+    '<li>Deux points "2\'" et "5\'" et un vecteur montrent votre position prévue selon le cap et la vitesse actuels.</li>' +
+    '<li>Une alerte apparaît à l\'approche d\'un point tournant, avec le nouveau cap et le temps jusqu\'au suivant.</li>' +
+    '<li>Bouton ⇧/✈ : bascule Nord en haut / Cap en haut (la carte pivote avec votre trajectoire).</li>' +
+    '</ul>' +
+    '<h3>Cartes et couches</h3><ul>' +
+    '<li>Sélecteur de calques (icône en haut à droite) : OpenStreetMap, satellite, OACI-VFR ou Plan IGN routier.</li>' +
+    '<li>Bases ULM, aérodromes (avec axe de piste) et points de report LFOT affichés automatiquement.</li>' +
+    '<li>Superposition de cartes VAC personnelles (PDF/image) avec calage manuel à 2 points.</li>' +
+    '<li>Téléchargez une zone pour un usage hors-ligne (section "Carte hors-ligne" du tiroir).</li>' +
+    '</ul>' +
+    '<h3>Autres outils</h3><ul>' +
+    '<li>METAR/TAF de LFOT actualisables dans le tiroir.</li>' +
+    '<li>Espaces aériens OpenAIP (clé gratuite à renseigner).</li>' +
+    '<li>Enregistrez votre plan en JSON pour le recharger plus tard — aucune donnée n\'est envoyée en ligne.</li>' +
+    '</ul>';
+
+  function openInfoModal(){
+    $('info-modal-body').innerHTML = INFO_CONTENT;
+    $('info-modal').classList.remove('hidden');
+    $('info-modal-backdrop').classList.remove('hidden');
+  }
+  function closeInfoModal(){
+    $('info-modal').classList.add('hidden');
+    $('info-modal-backdrop').classList.add('hidden');
+  }
+  $('btn-info').addEventListener('click', openInfoModal);
+  $('btn-help').addEventListener('click', openInfoModal);
+  $('info-modal-close').addEventListener('click', closeInfoModal);
+  $('info-modal-backdrop').addEventListener('click', closeInfoModal);
 
   /* ======================= INPUT LISTENERS ======================= */
   ['in-speed','in-conso','in-fuel'].forEach(id => {
@@ -2260,7 +2664,7 @@
 
   function updateTimerDisplay(){
     const elapsed = timerElapsedMs + (timerRunning ? (Date.now() - timerStartTs) : 0);
-    $('fab-timer').textContent = (timerRunning ? '⏸ ' : '⏱ ') + formatTimer(elapsed);
+    $('hud-timer').textContent = formatTimer(elapsed);
   }
 
   function toggleTimer(){
@@ -2268,12 +2672,12 @@
       timerRunning = true;
       timerStartTs = Date.now();
       timerInterval = setInterval(updateTimerDisplay, 1000);
-      $('fab-timer').classList.add('on');
+      $('hud-timer-block').classList.add('on');
     } else {
       timerRunning = false;
       timerElapsedMs += Date.now() - timerStartTs;
       clearInterval(timerInterval);
-      $('fab-timer').classList.remove('on');
+      $('hud-timer-block').classList.remove('on');
     }
     updateTimerDisplay();
   }
@@ -2282,12 +2686,12 @@
     timerRunning = false;
     clearInterval(timerInterval);
     timerElapsedMs = 0;
-    $('fab-timer').classList.remove('on');
+    $('hud-timer-block').classList.remove('on');
     updateTimerDisplay();
   }
 
-  $('fab-timer').addEventListener('click', toggleTimer);
-  $('fab-timer').addEventListener('dblclick', resetTimer);
+  $('hud-timer-block').addEventListener('click', toggleTimer);
+  $('hud-timer-block').addEventListener('dblclick', resetTimer);
 
   /* ======================= DRAWER (tiroir de paramètres) ======================= */
   function openDrawer(){
