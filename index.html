@@ -87,11 +87,36 @@
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.45;}}
   #topbar-spacer{flex:1;}
 
-  /* ---------- HUD (cap / vitesse, toujours visible) ---------- */
-  #hud{
+  /* ---------- Alerte point tournant (1 min avant) ---------- */
+  #turn-alert{
     position:absolute;
     top:14px;
-    left:14px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:1600;
+    max-width:88%;
+    background:var(--amber);
+    color:#1a1300;
+    border-radius:10px;
+    padding:12px 18px;
+    box-shadow:0 4px 18px rgba(0,0,0,.5);
+    cursor:pointer;
+    font-family:var(--font-ui);
+    text-align:center;
+    animation:turnAlertIn .25s ease;
+  }
+  #turn-alert.hidden{display:none;}
+  #turn-alert .ta-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.75;}
+  #turn-alert .ta-body{font-family:var(--font-mono);font-size:16px;font-weight:700;margin-top:3px;}
+  #turn-alert .ta-hint{font-size:10px;opacity:.7;margin-top:4px;}
+  @keyframes turnAlertIn{from{opacity:0;transform:translateX(-50%) translateY(-12px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+  /* ---------- HUD (cap / vitesse / altitude, toujours visible, en bas au centre) ---------- */
+  #hud{
+    position:absolute;
+    bottom:22px;
+    left:50%;
+    transform:translateX(-50%);
     z-index:900;
     display:flex;
     gap:10px;
@@ -116,7 +141,7 @@
     top:64px;
     right:14px;
     z-index:900;
-    width:70px;height:70px;
+    width:52px;height:52px;
     filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));
     pointer-events:none;
   }
@@ -145,22 +170,21 @@
   #zoom-controls button:last-child{border-radius:0 0 8px 8px;}
   #zoom-controls button:active{background:var(--panel);}
 
-  /* ---------- Bascule Nord en haut / Cap en haut ---------- */
+  /* ---------- Bascule Nord en haut / Cap en haut (sous la mini boussole) ---------- */
   #btn-rotate-mode{
     position:absolute;
-    bottom:22px;
-    left:66px;
+    top:126px;
+    right:14px;
     z-index:900;
+    width:52px;height:52px;
+    border-radius:50%;
     background:var(--panel-2);
     color:var(--text);
     border:1px solid var(--border-soft);
-    border-radius:8px;
-    padding:9px 12px;
-    font-size:12px;
-    font-weight:600;
-    font-family:var(--font-ui);
+    font-size:18px;
     box-shadow:0 2px 8px rgba(0,0,0,.4);
     cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
   }
   #btn-rotate-mode.on{background:var(--amber);color:#1a1300;border-color:var(--amber);}
 
@@ -180,6 +204,30 @@
     display:flex;align-items:center;justify-content:center;
   }
   #fab-settings:active{transform:scale(0.95);}
+
+  #fab-timer{
+    position:absolute;
+    bottom:86px;
+    right:18px;
+    z-index:1500;
+    min-width:54px;
+    height:40px;
+    padding:0 12px;
+    border-radius:20px;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--border-soft);
+    font-family:var(--font-mono);
+    font-size:13px;
+    font-weight:700;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    gap:4px;
+    white-space:nowrap;
+  }
+  #fab-timer.on{background:var(--red);color:#fff;border-color:var(--red);}
+  #fab-timer:active{transform:scale(0.96);}
 
   /* ---------- DRAWER (tiroir latéral avec tous les réglages) ---------- */
   #drawer-backdrop{
@@ -446,6 +494,8 @@
   <div id="main">
     <div id="map"></div>
 
+    <div id="turn-alert" class="hidden"></div>
+
     <div id="hud">
       <div class="hud-block">
         <div class="hud-label">Cap</div>
@@ -464,7 +514,7 @@
     </div>
 
     <div id="mini-compass-wrap">
-      <svg id="mini-compass-svg" width="70" height="70" viewBox="0 0 200 200"></svg>
+      <svg id="mini-compass-svg" width="52" height="52" viewBox="0 0 200 200"></svg>
     </div>
 
     <div id="zoom-controls">
@@ -472,7 +522,9 @@
       <button id="btn-zoom-out" title="Zoom arrière">−</button>
     </div>
 
-    <button id="btn-rotate-mode" title="Nord en haut / Cap en haut">🧭 Nord en haut</button>
+    <button id="btn-rotate-mode" title="Nord en haut / Cap en haut">⇧</button>
+
+    <button id="fab-timer" title="Chronomètre (double-clic pour réinitialiser)">⏱ 00:00</button>
 
     <button id="fab-settings" title="Paramètres">⚙</button>
 
@@ -538,6 +590,21 @@
           Aérodromes (hors terrains ULM, déjà affichés séparément) tagués sur OpenStreetMap. Utile pour connaître
           les terrains environnants et leurs fréquences quand elles sont renseignées — à vérifier avant tout vol.
         </p>
+      </div>
+
+      <div class="section" id="offline-section">
+        <p class="panel-title">Carte hors-ligne</p>
+        <p class="hint">
+          Télécharge à l'avance les tuiles de la carte affichée à l'écran (zone + niveaux de zoom autour de
+          l'actuel), pour pouvoir naviguer sans réseau en vol. Fais-le en Wi-Fi avant de partir, sur la zone
+          de ton vol prévu, pour le fond de carte actuellement sélectionné (OSM, satellite ou OACI).
+        </p>
+        <button class="tbtn primary" id="btn-download-offline" style="width:100%;justify-content:center;">⬇ Télécharger la zone visible</button>
+        <div id="offline-progress" class="hint" style="margin-top:6px;"></div>
+        <div class="summary-grid" style="margin-top:10px;">
+          <div class="summary-card"><div class="lbl">Tuiles en cache</div><div class="val" id="offline-tile-count">—</div></div>
+          <button class="tbtn" id="btn-clear-cache" style="align-self:center;">🗑 Vider le cache</button>
+        </div>
       </div>
 
       <div class="section" id="metar-section">
@@ -659,13 +726,101 @@
     trackPoints: [],      // historique GPS pour la trace en pointillé
     trackLine: null,
     pred2Marker: null,
-    pred5Marker: null
+    pred5Marker: null,
+    notifiedForWaypointId: null
   };
 
   const $ = (id) => document.getElementById(id);
   const rad = (d) => d * Math.PI / 180;
   const deg = (r) => r * 180 / Math.PI;
   const norm360 = (d) => ((d % 360) + 360) % 360;
+
+  /* ======================= CACHE HORS-LIGNE (IndexedDB) ======================= */
+  const TILE_DB_NAME = 'navulm-tiles';
+  const TILE_STORE = 'tiles';
+  let tileDbPromise = null;
+
+  function openTileDB(){
+    if (tileDbPromise) return tileDbPromise;
+    tileDbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(TILE_DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(TILE_STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return tileDbPromise;
+  }
+  async function getTileFromDB(key){
+    try {
+      const db = await openTileDB();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(TILE_STORE, 'readonly');
+        const req = tx.objectStore(TILE_STORE).get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    } catch(err){ return null; }
+  }
+  async function putTileToDB(key, blob){
+    try {
+      const db = await openTileDB();
+      const tx = db.transaction(TILE_STORE, 'readwrite');
+      tx.objectStore(TILE_STORE).put(blob, key);
+    } catch(err){ /* silencieux : le cache est un bonus, pas un besoin bloquant */ }
+  }
+  async function countCachedTiles(){
+    try {
+      const db = await openTileDB();
+      return await new Promise((resolve) => {
+        const req = db.transaction(TILE_STORE, 'readonly').objectStore(TILE_STORE).count();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(0);
+      });
+    } catch(err){ return 0; }
+  }
+  async function clearTileCache(){
+    try {
+      const db = await openTileDB();
+      const tx = db.transaction(TILE_STORE, 'readwrite');
+      tx.objectStore(TILE_STORE).clear();
+    } catch(err){}
+  }
+
+  // Couche de tuiles avec cache automatique : sert le cache si présent (hors-ligne), sinon télécharge
+  // depuis le réseau et met en cache pour la prochaine fois (mise en cache passive en volant/roulant).
+  const OfflineTileLayer = L.TileLayer.extend({
+    createTile: function(coords, done){
+      const tile = document.createElement('img');
+      const key = this._tileCacheKey(coords);
+      const url = this.getTileUrl(coords);
+      getTileFromDB(key).then(blob => {
+        if (blob){
+          tile.src = URL.createObjectURL(blob);
+          done(null, tile);
+          return;
+        }
+        fetch(url).then(res => {
+          if (!res.ok) throw new Error('tuile indisponible');
+          return res.blob();
+        }).then(blob => {
+          putTileToDB(key, blob);
+          tile.src = URL.createObjectURL(blob);
+          done(null, tile);
+        }).catch(err => {
+          done(err, tile);
+        });
+      });
+      return tile;
+    },
+    _tileCacheKey: function(coords){
+      return this._tileLayerId + '/' + coords.z + '/' + coords.x + '/' + coords.y;
+    }
+  });
+  function offlineTileLayer(url, layerId, options){
+    const layer = new OfflineTileLayer(url, options);
+    layer._tileLayerId = layerId;
+    return layer;
+  }
 
   /* ======================= MAP ======================= */
   // Emprise de la France métropolitaine (+ Corse) : la carte reste cantonnée à ce territoire.
@@ -679,18 +834,20 @@
     minZoom: 6
   }).fitBounds(FRANCE_BOUNDS);
 
-  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const osmLayer = offlineTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 'osm', {
     maxZoom: 19,
     minZoom: 6,
     bounds: FRANCE_BOUNDS,
+    subdomains: 'abc',
     attribution: '&copy; OpenStreetMap contributeurs'
   }).addTo(map);
 
   // Vue satellite (orthophotos IGN), diffusée en tuiles WMTS ouvertes et gratuites sur cartes.gouv.fr.
-  const satelliteLayer = L.tileLayer(
+  const satelliteLayer = offlineTileLayer(
     'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
     '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg' +
     '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}',
+    'satellite',
     {
       maxZoom: 19,
       minZoom: 6,
@@ -699,8 +856,42 @@
     }
   );
 
+  // Carte OACI-VFR (IGN/SIA) — service "Cartes IGN classiques", diffusion libre et gratuite pour un
+  // usage personnel depuis l'ouverture des données IGN (2021). Endpoint dédié avec clé d'accès publique.
+  const oaciLayer = offlineTileLayer(
+    'https://data.geopf.fr/private/wmts?apikey=ign_scan_ws&SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+    '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI&STYLE=normal&FORMAT=image/jpeg' +
+    '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}',
+    'oaci',
+    {
+      maxZoom: 15,
+      minZoom: 6,
+      bounds: FRANCE_BOUNDS,
+      attribution: 'Carte OACI-VFR &copy; IGN-F/Géoportail — SIA'
+    }
+  );
+
+  // Plan IGN V2 (fond routier vectoriel IGN : routes, villes, relief), flux ouvert et gratuit.
+  const planIgnLayer = offlineTileLayer(
+    'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+    '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png' +
+    '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}',
+    'planign',
+    {
+      maxZoom: 19,
+      minZoom: 6,
+      bounds: FRANCE_BOUNDS,
+      attribution: 'Plan IGN V2 &copy; IGN-F/Géoportail'
+    }
+  );
+
   L.control.layers(
-    { 'Fond OpenStreetMap': osmLayer, 'Vue satellite (IGN)': satelliteLayer },
+    {
+      'Fond OpenStreetMap': osmLayer,
+      'Vue satellite (IGN)': satelliteLayer,
+      'Carte OACI-VFR (IGN)': oaciLayer,
+      'Plan IGN routier': planIgnLayer
+    },
     null,
     { position: 'topright', collapsed: true }
   ).addTo(map);
@@ -726,7 +917,8 @@
 
   $('btn-rotate-mode').addEventListener('click', () => {
     rotationMode = (rotationMode === 'north') ? 'track' : 'north';
-    $('btn-rotate-mode').textContent = rotationMode === 'track' ? '🧭 Cap en haut' : '🧭 Nord en haut';
+    $('btn-rotate-mode').textContent = rotationMode === 'track' ? '✈' : '⇧';
+    $('btn-rotate-mode').title = rotationMode === 'track' ? 'Cap en haut (cliquer pour Nord en haut)' : 'Nord en haut (cliquer pour Cap en haut)';
     $('btn-rotate-mode').classList.toggle('on', rotationMode === 'track');
     setWaypointsDraggable(rotationMode === 'north');
     applyMapRotation();
@@ -851,6 +1043,7 @@
     });
     marker.on('click', () => {
       state.activeWaypointId = id;
+      state.notifiedForWaypointId = null;
       refreshAll();
     });
 
@@ -1028,7 +1221,7 @@
       });
     });
     list.querySelectorAll('.icon-btn.act').forEach(btn => {
-      btn.onclick = () => { state.activeWaypointId = parseInt(btn.dataset.id,10); refreshAll(); };
+      btn.onclick = () => { state.activeWaypointId = parseInt(btn.dataset.id,10); state.notifiedForWaypointId = null; refreshAll(); };
     });
     list.querySelectorAll('.icon-btn.del').forEach(btn => {
       btn.onclick = () => removeWaypoint(parseInt(btn.dataset.id,10));
@@ -1078,6 +1271,46 @@
       }
     }
     drawCompass(state.currentHeading, courseDeg);
+  }
+
+  /* ======================= ALERTE POINT TOURNANT ======================= */
+  const turnAlertEl = $('turn-alert');
+  turnAlertEl.addEventListener('click', () => turnAlertEl.classList.add('hidden'));
+
+  function showTurnAlert(html){
+    turnAlertEl.innerHTML = html;
+    turnAlertEl.classList.remove('hidden');
+  }
+
+  function checkTurnPointAlert(lat, lng, speedKmh){
+    const idx = state.waypoints.findIndex(w => w.id === state.activeWaypointId);
+    if (idx === -1) return;
+    // Nécessite une vitesse GPS réelle et cohérente (au sol/à l'arrêt, pas d'estimation) pour ce calcul.
+    if (speedKmh == null || speedKmh <= 3) return;
+    const wp = state.waypoints[idx];
+    const dist = distanceKm(lat, lng, wp.lat, wp.lng);
+    const eteMin = (dist / speedKmh) * 60;
+
+    if (eteMin <= 1 && state.notifiedForWaypointId !== wp.id){
+      state.notifiedForWaypointId = wp.id;
+      const next = state.waypoints[idx + 1];
+      if (next){
+        const tc = trueCourse(wp.lat, wp.lng, next.lat, next.lng);
+        const legDist = distanceKm(wp.lat, wp.lng, next.lat, next.lng);
+        const legEte = (legDist / speedKmh) * 60;
+        showTurnAlert(
+          '<div class="ta-title">Approche de ' + wp.name + '</div>' +
+          '<div class="ta-body">Nouveau cap ' + Math.round(tc) + '° · ' + fmtMin(legEte) + ' jusqu\'à ' + next.name + '</div>' +
+          '<div class="ta-hint">Toucher pour fermer</div>'
+        );
+      } else {
+        showTurnAlert(
+          '<div class="ta-title">Approche de ' + wp.name + '</div>' +
+          '<div class="ta-body">Dernier point du plan de vol</div>' +
+          '<div class="ta-hint">Toucher pour fermer</div>'
+        );
+      }
+    }
   }
 
   /* ======================= GPS ======================= */
@@ -1162,6 +1395,8 @@
       state.pred2Marker = updatePredMarker(state.pred2Marker, p2, "2'");
       state.pred5Marker = updatePredMarker(state.pred5Marker, p5, "5'");
     }
+
+    checkTurnPointAlert(lat, lng, speedKmh);
 
     renderActiveLeg();
     updateCompassDisplay();
@@ -1868,6 +2103,95 @@
     map.fitBounds(L.latLngBounds(LFOT_VRP.map(p => [p.lat, p.lng])), { padding: [60,60] });
   });
 
+  /* ======================= TÉLÉCHARGEMENT HORS-LIGNE ======================= */
+  function latLngToTile(lat, lng, z){
+    const n = Math.pow(2, z);
+    const x = Math.floor((lng + 180) / 360 * n);
+    const latRad = rad(lat);
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x, y };
+  }
+
+  function getActiveBaseLayer(){
+    if (map.hasLayer(oaciLayer)) return oaciLayer;
+    if (map.hasLayer(satelliteLayer)) return satelliteLayer;
+    if (map.hasLayer(planIgnLayer)) return planIgnLayer;
+    return osmLayer;
+  }
+
+  async function downloadVisibleAreaOffline(){
+    const btn = $('btn-download-offline');
+    const progress = $('offline-progress');
+    btn.disabled = true;
+
+    const layer = getActiveBaseLayer();
+    const bounds = map.getBounds();
+    const currentZoom = map.getZoom();
+    const minZ = currentZoom;
+    const maxZ = Math.min(currentZoom + 3, layer.options.maxZoom);
+
+    // Construit la liste de toutes les tuiles à télécharger, zoom par zoom.
+    const tasks = [];
+    for (let z = minZ; z <= maxZ; z++){
+      const nw = latLngToTile(bounds.getNorth(), bounds.getWest(), z);
+      const se = latLngToTile(bounds.getSouth(), bounds.getEast(), z);
+      for (let x = nw.x; x <= se.x; x++){
+        for (let y = nw.y; y <= se.y; y++){
+          tasks.push({ z, x, y });
+        }
+      }
+    }
+
+    if (tasks.length > 6000){
+      progress.textContent = 'Zone trop grande (' + tasks.length + ' tuiles). Zoome un peu plus avant de télécharger.';
+      btn.disabled = false;
+      return;
+    }
+
+    let done = 0, failed = 0;
+    const layerId = layer._tileLayerId;
+    // Téléchargements en petits lots parallèles pour rester raisonnable pour le serveur et le navigateur.
+    const BATCH = 6;
+    for (let i = 0; i < tasks.length; i += BATCH){
+      const batch = tasks.slice(i, i + BATCH);
+      await Promise.all(batch.map(async (t) => {
+        const key = layerId + '/' + t.z + '/' + t.x + '/' + t.y;
+        const existing = await getTileFromDB(key);
+        if (existing){ done++; return; }
+        try {
+          const url = layer.getTileUrl({ x: t.x, y: t.y, z: t.z });
+          const res = await fetch(url);
+          if (!res.ok) throw new Error();
+          const blob = await res.blob();
+          await putTileToDB(key, blob);
+          done++;
+        } catch(err){
+          failed++;
+        }
+      }));
+      progress.textContent = 'Téléchargement… ' + (done + failed) + ' / ' + tasks.length + ' tuiles (' + failed + ' échecs)';
+    }
+
+    progress.textContent = 'Terminé : ' + done + ' tuiles enregistrées pour un usage hors-ligne' +
+      (failed ? ' (' + failed + ' échecs, réessaie si besoin)' : '') + '.';
+    btn.disabled = false;
+    refreshOfflineTileCount();
+  }
+
+  async function refreshOfflineTileCount(){
+    const count = await countCachedTiles();
+    $('offline-tile-count').textContent = count;
+  }
+
+  $('btn-download-offline').addEventListener('click', downloadVisibleAreaOffline);
+  $('btn-clear-cache').addEventListener('click', async () => {
+    if (!confirm('Vider tout le cache de cartes hors-ligne ?')) return;
+    await clearTileCache();
+    refreshOfflineTileCount();
+    $('offline-progress').textContent = 'Cache vidé.';
+  });
+  refreshOfflineTileCount();
+
   /* ======================= MÉTÉO LFOT (METAR / TAF) ======================= */
   function extractWeatherText(entry, keys){
     if (!entry) return null;
@@ -1918,6 +2242,52 @@
   ['in-speed','in-conso','in-fuel'].forEach(id => {
     $(id).addEventListener('input', () => { renderPlanList(); });
   });
+
+  /* ======================= CHRONOMÈTRE ======================= */
+  let timerRunning = false;
+  let timerStartTs = 0;
+  let timerElapsedMs = 0;
+  let timerInterval = null;
+
+  function formatTimer(ms){
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return (h > 0 ? String(h).padStart(2,'0') + ':' : '') +
+           String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  function updateTimerDisplay(){
+    const elapsed = timerElapsedMs + (timerRunning ? (Date.now() - timerStartTs) : 0);
+    $('fab-timer').textContent = (timerRunning ? '⏸ ' : '⏱ ') + formatTimer(elapsed);
+  }
+
+  function toggleTimer(){
+    if (!timerRunning){
+      timerRunning = true;
+      timerStartTs = Date.now();
+      timerInterval = setInterval(updateTimerDisplay, 1000);
+      $('fab-timer').classList.add('on');
+    } else {
+      timerRunning = false;
+      timerElapsedMs += Date.now() - timerStartTs;
+      clearInterval(timerInterval);
+      $('fab-timer').classList.remove('on');
+    }
+    updateTimerDisplay();
+  }
+
+  function resetTimer(){
+    timerRunning = false;
+    clearInterval(timerInterval);
+    timerElapsedMs = 0;
+    $('fab-timer').classList.remove('on');
+    updateTimerDisplay();
+  }
+
+  $('fab-timer').addEventListener('click', toggleTimer);
+  $('fab-timer').addEventListener('dblclick', resetTimer);
 
   /* ======================= DRAWER (tiroir de paramètres) ======================= */
   function openDrawer(){
