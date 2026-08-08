@@ -24,6 +24,8 @@
     --blue:#4fc3f7;
     --font-ui:'Inter',system-ui,sans-serif;
     --font-mono:'JetBrains Mono',monospace;
+    --icon-size:clamp(42px, 12vw, 52px);
+    --icon-gap:8px;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
@@ -114,22 +116,22 @@
   /* ---------- HUD (cap / vitesse / altitude, toujours visible, en bas au centre) ---------- */
   #hud{
     position:absolute;
-    bottom:22px;
+    bottom:14px;
     left:50%;
     transform:translateX(-50%);
     z-index:900;
     display:flex;
-    gap:10px;
+    gap:6px;
     background:rgba(15,22,32,.88);
     border:1px solid var(--border);
-    border-radius:10px;
-    padding:10px 16px;
+    border-radius:8px;
+    padding:6px 10px;
     backdrop-filter:blur(4px);
     pointer-events:none;
   }
-  .hud-block{text-align:center;padding:0 6px;}
-  .hud-label{font-size:10px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;}
-  .hud-value{font-family:var(--font-mono);font-size:28px;font-weight:700;color:var(--amber);line-height:1.15;}
+  .hud-block{text-align:center;padding:0 4px;}
+  .hud-label{font-size:8px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;}
+  .hud-value{font-family:var(--font-mono);font-size:17px;font-weight:700;color:var(--amber);line-height:1.15;}
   .hud-value.speed{color:var(--blue);}
   .hud-value.alt{color:var(--green);}
   .hud-sep{width:1px;background:var(--border-soft);}
@@ -138,50 +140,27 @@
   /* ---------- Mini boussole (haut à droite, toujours visible) ---------- */
   #mini-compass-wrap{
     position:absolute;
-    top:74px;
+    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 1);
     right:14px;
     z-index:900;
-    width:52px;height:52px;
+    width:var(--icon-size);height:var(--icon-size);
     filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));
     pointer-events:none;
   }
-
-  /* ---------- Zoom personnalisé (hors zone rotative) ---------- */
-  #zoom-controls{
-    position:absolute;
-    bottom:22px;
-    left:14px;
-    z-index:900;
-    display:flex;
-    flex-direction:column;
-    border-radius:8px;
-    overflow:hidden;
-    box-shadow:0 2px 8px rgba(0,0,0,.4);
-  }
-  #zoom-controls button{
-    width:38px;height:38px;
-    background:var(--panel-2);
-    color:var(--text);
-    border:1px solid var(--border-soft);
-    font-size:18px;
-    cursor:pointer;
-  }
-  #zoom-controls button:first-child{border-bottom:none;border-radius:8px 8px 0 0;}
-  #zoom-controls button:last-child{border-radius:0 0 8px 8px;}
-  #zoom-controls button:active{background:var(--panel);}
+  #mini-compass-svg{width:100%;height:100%;}
 
   /* ---------- Bascule Nord en haut / Cap en haut (sous la mini boussole) ---------- */
   #btn-rotate-mode{
     position:absolute;
-    top:136px;
+    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 2);
     right:14px;
     z-index:900;
-    width:52px;height:52px;
+    width:var(--icon-size);height:var(--icon-size);
     border-radius:50%;
     background:var(--panel-2);
     color:var(--text);
     border:1px solid var(--border-soft);
-    font-size:18px;
+    font-size:calc(var(--icon-size) * 0.34);
     box-shadow:0 2px 8px rgba(0,0,0,.4);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
@@ -190,10 +169,10 @@
 
   #fab-settings{
     position:absolute;
-    top:198px;
+    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 3);
     right:14px;
     z-index:900;
-    width:52px;height:52px;
+    width:var(--icon-size);height:var(--icon-size);
     border-radius:50%;
     background:var(--panel-2);
     color:var(--text);
@@ -202,7 +181,7 @@
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
-  #fab-settings svg{width:22px;height:22px;fill:currentColor;}
+  #fab-settings svg{width:42%;height:42%;fill:currentColor;}
   #fab-settings:active{transform:scale(0.95);}
 
   #btn-info{
@@ -210,14 +189,14 @@
     bottom:22px;
     right:18px;
     z-index:1500;
-    width:44px;height:44px;
+    width:clamp(38px, 10vw, 44px);height:clamp(38px, 10vw, 44px);
     border-radius:50%;
     background:var(--panel-2);
     color:var(--amber);
     border:1.5px solid var(--amber);
     font-family:var(--font-mono);
     font-weight:700;
-    font-size:18px;
+    font-size:clamp(15px, 4vw, 18px);
     font-style:italic;
     box-shadow:0 4px 14px rgba(0,0,0,.5);
     cursor:pointer;
@@ -478,20 +457,22 @@
     color:var(--text)!important;
     border:1px solid var(--border-soft)!important;
     box-shadow:0 2px 8px rgba(0,0,0,.4)!important;
+    margin:0!important;
   }
   .leaflet-control-layers:not(.leaflet-control-layers-expanded){
     border-radius:50%!important;
     overflow:hidden;
+    width:var(--icon-size)!important;height:var(--icon-size)!important;
   }
   .leaflet-control-layers-toggle{
-    width:52px!important;height:52px!important;
+    width:var(--icon-size)!important;height:var(--icon-size)!important;
     background-image:none!important;
     display:flex!important;align-items:center;justify-content:center;
   }
-  .leaflet-control-layers-toggle svg{width:24px;height:24px;fill:var(--text);}
+  .leaflet-control-layers-toggle svg{width:46%;height:46%;fill:var(--text);}
   .leaflet-control-layers-expanded{padding:10px 12px;border-radius:10px;}
   .leaflet-control-layers label{font-family:var(--font-ui);font-size:12.5px;}
-  .leaflet-top.leaflet-right{top:14px!important;right:14px!important;}
+  .leaflet-top.leaflet-right{top:14px!important;right:14px!important;margin:0!important;}
   .leg-tooltip{
     background:var(--panel-2)!important;
     color:var(--amber)!important;
@@ -545,8 +526,8 @@
   @media (max-width:900px){
     #drawer{width:100vw;max-width:100vw;}
     #brand .sub{display:none;}
-    #hud{padding:8px 12px;gap:6px;}
-    .hud-value{font-size:22px;}
+    #hud{padding:6px 10px;gap:5px;}
+    .hud-value{font-size:15px;}
   }
 </style>
 </head>
@@ -593,10 +574,6 @@
       <svg id="mini-compass-svg" width="52" height="52" viewBox="0 0 200 200"></svg>
     </div>
 
-    <div id="zoom-controls">
-      <button id="btn-zoom-in" title="Zoom avant">+</button>
-      <button id="btn-zoom-out" title="Zoom arrière">−</button>
-    </div>
 
     <button id="btn-rotate-mode" title="Nord en haut / Cap en haut">⇧</button>
 
@@ -626,9 +603,7 @@
       <div id="drawer-body">
 
         <div id="drawer-actions">
-          <button class="tbtn" id="btn-vrp">📍 Centrer LFOT</button>
           <button class="tbtn" id="btn-help">? Aide</button>
-          <button class="tbtn" id="btn-settings">⚙ Espaces aériens</button>
           <label class="tbtn" for="file-load">📂 Charger plan</label>
           <input type="file" id="file-load" accept="application/json">
           <button class="tbtn" id="btn-save">💾 Enregistrer plan</button>
@@ -741,19 +716,23 @@
       </div>
 
       <div class="section" id="metar-section">
-        <p class="panel-title">
-          Météo LFOT (METAR / TAF)
-          <button class="tbtn" id="btn-refresh-metar" style="font-size:10px;padding:4px 8px;">↻</button>
-        </p>
-        <div id="metar-box" class="weather-box">
+        <p class="panel-title">Météo (METAR / TAF)</p>
+        <div class="field row2" style="align-items:end;">
+          <div>
+            <label>Code OACI de l'aérodrome</label>
+            <input type="text" id="metar-icao" value="LFOT" maxlength="4" style="text-transform:uppercase;">
+          </div>
+          <button class="tbtn primary" id="btn-refresh-metar" style="height:34px;">↻ Obtenir</button>
+        </div>
+        <div id="metar-box" class="weather-box" style="margin-top:10px;">
           <div class="weather-label">METAR</div>
-          <div class="weather-text" id="metar-text">Chargement…</div>
+          <div class="weather-text" id="metar-text">—</div>
         </div>
         <div id="taf-box" class="weather-box">
           <div class="weather-label">TAF</div>
-          <div class="weather-text" id="taf-text">Chargement…</div>
+          <div class="weather-text" id="taf-text">—</div>
         </div>
-        <p class="hint">Source : aviationweather.gov (NOAA), rediffusion du réseau OPMET international, via un proxy CORS public. LFOT n'émet pas toujours de bulletin (terrain à statut mixte) — l'absence de donnée ne veut pas dire absence de trafic.</p>
+        <p class="hint">METAR : VATSIM (relais direct du réseau OPMET, fiable). TAF : aviationweather.gov (NOAA) via proxy CORS public, best-effort. Certains petits terrains n'émettent pas de bulletin — l'absence de donnée ne veut pas dire absence de trafic.</p>
       </div>
 
       <div class="section" id="vac-section">
@@ -852,8 +831,6 @@
     currentHeading: 0,
     lastFixTime: null,
     prevPos: null,
-    openaipKey: '',
-    airspaceLayer: null,
     planeMarker: null,
     routeLine: null,
     activeLegLine: null,
@@ -1168,8 +1145,7 @@
 
   // Boutons de zoom personnalisés, en dehors de la carte : restent bien positionnés et lisibles
   // même en mode "Cap en haut" (la carte elle-même pivote, ces boutons non).
-  $('btn-zoom-in').addEventListener('click', () => map.zoomIn());
-  $('btn-zoom-out').addEventListener('click', () => map.zoomOut());
+  // Zoom : pincement / molette / double-clic (pas de boutons +/- pour garder l'écran dégagé).
 
   /* ======================= ORIENTATION (Nord en haut / Cap en haut) ======================= */
   let rotationMode = 'north'; // 'north' | 'track'
@@ -1893,45 +1869,6 @@
   }
   $('btn-navlog').addEventListener('click', generateNavLog);
 
-  /* ======================= AIRSPACES (OpenAIP, optional) ======================= */
-  $('btn-settings').addEventListener('click', async () => {
-    const key = prompt(
-      "Clé API OpenAIP (gratuite sur openaip.net) pour afficher les espaces aériens de la zone visible.\n" +
-      "Laissez vide pour retirer les espaces affichés.",
-      state.openaipKey
-    );
-    if (key === null) return;
-    state.openaipKey = key.trim();
-    if (state.airspaceLayer){ map.removeLayer(state.airspaceLayer); state.airspaceLayer = null; }
-    if (state.openaipKey) await loadAirspaces();
-  });
-
-  async function loadAirspaces(){
-    const b = map.getBounds();
-    const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].join(',');
-    try {
-      const res = await fetch('https://api.core.openaip.net/api/airspaces?bbox=' + bbox + '&limit=200', {
-        headers: { 'x-openaip-api-key': state.openaipKey }
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const json = await res.json();
-      const items = json.items || json.data || [];
-      state.airspaceLayer = L.layerGroup();
-      items.forEach(a => {
-        if (!a.geometry) return;
-        const layer = L.geoJSON(a.geometry, {
-          style: { color:'#ff5a5a', weight:1.5, fillOpacity:0.06, dashArray:'4,3' }
-        });
-        layer.bindPopup('<b>'+(a.name||'Espace aérien')+'</b><br>Classe: '+(a.icaoClass ?? a.type ?? '—'));
-        layer.addTo(state.airspaceLayer);
-      });
-      state.airspaceLayer.addTo(map);
-    } catch(err){
-      alert("Impossible de charger les espaces aériens (" + err.message + "). " +
-            "Vérifiez votre clé OpenAIP et votre connexion.");
-    }
-  }
-
   /* ======================= VAC OVERLAY LAYER ======================= */
   const VacOverlay = L.Layer.extend({
     initialize: function(canvasEl, calib, opacity){
@@ -2140,15 +2077,15 @@
     return L.divIcon({
       className: '',
       html:
-        '<svg width="26" height="26" viewBox="0 0 26 26">' +
-          '<circle cx="13" cy="13" r="8.5" fill="' + color + '99" stroke="' + color + '" stroke-width="2.6"/>' +
+        '<svg width="34" height="34" viewBox="0 0 34 34">' +
+          '<circle cx="17" cy="17" r="9" fill="none" stroke="' + color + '" stroke-width="2.2"/>' +
           (hasAxis
-            ? '<line x1="13" y1="1" x2="13" y2="25" stroke="' + color + '" stroke-width="3" ' +
-              'transform="rotate(' + bearingDeg + ' 13 13)"/>'
-            : '<circle cx="13" cy="13" r="2.4" fill="#ffffff"/>') +
+            ? '<line x1="17" y1="6" x2="17" y2="28" stroke="' + color + '" stroke-width="2.2" ' +
+              'transform="rotate(' + bearingDeg + ' 17 17)"/>'
+            : '<circle cx="17" cy="17" r="2" fill="' + color + '"/>') +
         '</svg>',
-      iconSize: [26,26],
-      iconAnchor: [13,13]
+      iconSize: [34,34],
+      iconAnchor: [17,17]
     });
   }
   function ulmIcon(bearingDeg){ return aeroMarkerIcon('#0d6b2e', bearingDeg); }
@@ -2219,10 +2156,9 @@
     const freqs = extractFrequencies(tags);
     const freqHtml = freqs.length
       ? '<br>' + freqs.map(f => '<b>' + f.label + ' :</b> ' + f.value + ' MHz').join('<br>')
-      : '<br><span style="color:#7e8fa3;font-size:11px;">Fréquence radio non renseignée dans OpenStreetMap</span>';
+      : '';
     L.marker([lat, lng], { icon: ulmIcon(bearingDeg) })
-      .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml +
-        '<br><span style="color:#7e8fa3;font-size:11px;">' + sourceLabel + '</span>')
+      .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml)
       .addTo(ulmLayer);
   }
 
@@ -2233,10 +2169,9 @@
     const freqs = extractFrequencies(tags);
     const freqHtml = freqs.length
       ? '<br>' + freqs.map(f => '<b>' + f.label + ' :</b> ' + f.value + ' MHz').join('<br>')
-      : '<br><span style="color:#7e8fa3;font-size:11px;">Fréquence radio non renseignée dans OpenStreetMap</span>';
+      : '';
     L.marker([lat, lng], { icon: aerodromeIcon(bearingDeg) })
-      .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml +
-        '<br><span style="color:#7e8fa3;font-size:11px;">' + sourceLabel + '</span>')
+      .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml)
       .addTo(aerodromeLayer);
   }
 
@@ -2466,10 +2401,6 @@
     return group;
   }
 
-  $('btn-vrp').addEventListener('click', () => {
-    map.fitBounds(L.latLngBounds(LFOT_VRP.map(p => [p.lat, p.lng])), { padding: [60,60] });
-  });
-
   /* ======================= TÉLÉCHARGEMENT HORS-LIGNE ======================= */
   function latLngToTile(lat, lng, z){
     const n = Math.pow(2, z);
@@ -2569,29 +2500,33 @@
   }
 
   async function loadMetarTaf(){
+    const icao = ($('metar-icao').value || 'LFOT').trim().toUpperCase().slice(0,4);
+    $('metar-icao').value = icao;
     $('metar-text').textContent = 'Chargement…';
     $('taf-text').textContent = 'Chargement…';
-    // aviationweather.gov ne renvoie pas d'en-tête CORS pour les sites tiers : on passe par un proxy
-    // CORS public (gratuit, sans clé) qui relaie la même donnée officielle NOAA/OPMET.
-    const proxy = 'https://api.allorigins.win/raw?url=';
-    const metarUrl = encodeURIComponent('https://aviationweather.gov/api/data/metar?ids=LFOT&format=json');
-    const tafUrl = encodeURIComponent('https://aviationweather.gov/api/data/taf?ids=LFOT&format=json');
+
+    // METAR : VATSIM, relais direct du réseau OPMET avec CORS ouvert — fiable, sans proxy nécessaire.
     try {
-      const [metarRes, tafRes] = await Promise.all([
-        fetch(proxy + metarUrl),
-        fetch(proxy + tafUrl)
-      ]);
-      const metarJson = metarRes.ok ? await metarRes.json() : [];
-      const tafJson = tafRes.ok ? await tafRes.json() : [];
-
-      const metarText = extractWeatherText(metarJson[0], ['rawOb','raw_text','rawText','metar_text']);
-      const tafText = extractWeatherText(tafJson[0], ['rawTAF','raw_text','rawText','taf_text']);
-
-      $('metar-text').textContent = metarText || "Aucun METAR disponible pour LFOT actuellement.";
-      $('taf-text').textContent = tafText || "Aucun TAF disponible pour LFOT actuellement.";
+      const res = await fetch('https://metar.vatsim.net/' + icao);
+      const text = (await res.text()).trim();
+      $('metar-text').textContent = (res.ok && text && !text.toLowerCase().includes('not found'))
+        ? text
+        : "Aucun METAR disponible pour " + icao + " actuellement.";
     } catch(err){
-      $('metar-text').textContent = "Échec du chargement (" + err.message + ").";
-      $('taf-text').textContent = "Échec du chargement (" + err.message + ").";
+      $('metar-text').textContent = "Échec du chargement METAR (" + err.message + ").";
+    }
+
+    // TAF : aviationweather.gov (NOAA) ne renvoie pas d'en-tête CORS pour les sites tiers,
+    // on passe par un proxy CORS public (gratuit, sans clé) — best-effort.
+    try {
+      const proxy = 'https://api.allorigins.win/raw?url=';
+      const tafUrl = encodeURIComponent('https://aviationweather.gov/api/data/taf?ids=' + icao + '&format=json');
+      const tafRes = await fetch(proxy + tafUrl);
+      const tafJson = tafRes.ok ? await tafRes.json() : [];
+      const tafText = extractWeatherText(tafJson[0], ['rawTAF','raw_text','rawText','taf_text']);
+      $('taf-text').textContent = tafText || "Aucun TAF disponible pour " + icao + " actuellement.";
+    } catch(err){
+      $('taf-text').textContent = "Échec du chargement TAF (" + err.message + ").";
     }
   }
   $('btn-refresh-metar').addEventListener('click', loadMetarTaf);
@@ -2624,7 +2559,6 @@
     '</ul>' +
     '<h3>Autres outils</h3><ul>' +
     '<li>METAR/TAF de LFOT actualisables dans le tiroir.</li>' +
-    '<li>Espaces aériens OpenAIP (clé gratuite à renseigner).</li>' +
     '<li>Enregistrez votre plan en JSON pour le recharger plus tard — aucune donnée n\'est envoyée en ligne.</li>' +
     '</ul>';
 
