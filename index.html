@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>NAVULM — GPS de navigation ULM</title>
+<title>AeroTrack — GPS de navigation ULM</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -510,6 +510,11 @@
   }
   .weather-label{font-size:9px;color:var(--text-dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
   .weather-text{font-family:var(--font-mono);font-size:12px;color:var(--text);line-height:1.5;word-break:break-word;white-space:pre-wrap;}
+  .weather-decoded{font-family:var(--font-ui);font-size:12.5px;color:var(--text);line-height:1.7;}
+  .weather-decoded .wd-block{margin-bottom:6px;padding-left:10px;border-left:2px solid var(--border-soft);}
+  .weather-decoded .wd-title{font-weight:700;color:var(--amber);font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+  .weather-decoded ul{margin:2px 0 0;padding-left:16px;}
+  .weather-decoded li{margin-bottom:2px;}
 
   .plane-icon{filter:drop-shadow(0 0 3px rgba(255,59,48,.8));}
   .wpt-marker{
@@ -537,7 +542,7 @@
   <div id="topbar">
     <div id="brand">
       <svg viewBox="0 0 24 24"><path d="M22 16v-2l-8.5-5V3.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5V9L2 14v2l8.5-2.5V19L8 20.5V22l4-1 4 1v-1.5L13.5 19v-5.5L22 16z"/></svg>
-      NAVULM <span class="sub">GPS DE NAVIGATION ULM</span>
+      AeroTrack <span class="sub">GPS DE NAVIGATION ULM</span>
     </div>
     <div id="gps-status"><span id="gps-dot"></span><span id="gps-text">GPS inactif</span></div>
     <div id="topbar-spacer"></div>
@@ -588,7 +593,7 @@
     <div id="info-modal-backdrop" class="hidden"></div>
     <div id="info-modal" class="hidden">
       <div id="info-modal-header">
-        <h2>Notice NAVULM</h2>
+        <h2>Notice AeroTrack</h2>
         <button id="info-modal-close">✕</button>
       </div>
       <div id="info-modal-body"></div>
@@ -725,14 +730,18 @@
           <button class="tbtn primary" id="btn-refresh-metar" style="height:34px;">↻ Obtenir</button>
         </div>
         <div id="metar-box" class="weather-box" style="margin-top:10px;">
-          <div class="weather-label">METAR</div>
+          <div class="weather-label">METAR — brut</div>
           <div class="weather-text" id="metar-text">—</div>
+          <div class="weather-label" style="margin-top:8px;">METAR — décodé</div>
+          <div class="weather-decoded" id="metar-decoded">—</div>
         </div>
         <div id="taf-box" class="weather-box">
-          <div class="weather-label">TAF</div>
+          <div class="weather-label">TAF — brut</div>
           <div class="weather-text" id="taf-text">—</div>
+          <div class="weather-label" style="margin-top:8px;">TAF — décodé</div>
+          <div class="weather-decoded" id="taf-decoded">—</div>
         </div>
-        <p class="hint">METAR : VATSIM (relais direct du réseau OPMET, fiable). TAF : aviationweather.gov (NOAA) via proxy CORS public, best-effort. Certains petits terrains n'émettent pas de bulletin — l'absence de donnée ne veut pas dire absence de trafic.</p>
+        <p class="hint">METAR : VATSIM (relais direct du réseau OPMET, fiable). TAF : aviationweather.gov (NOAA) via proxy CORS public, best-effort. Décodage automatique fourni à titre indicatif — le message brut fait foi. Certains petits terrains n'émettent pas de bulletin.</p>
       </div>
 
       <div class="section" id="vac-section">
@@ -800,7 +809,7 @@
         Plan de vol
         <button class="tbtn" id="btn-clear" style="font-size:10px;padding:4px 8px;">Effacer</button>
       </p>
-      <p class="hint" style="margin-bottom:10px;">Cliquez sur la carte pour ajouter un point de route. Glissez un point pour le déplacer.</p>
+      <p class="hint" style="margin-bottom:10px;">Appuyez longuement sur la carte pour ajouter un point de route (évite les points créés par erreur). Glissez un point pour le déplacer.</p>
       <div id="wpt-list"></div>
       <div id="empty-plan">Aucun point de route. Cliquez sur la carte pour commencer à tracer votre navigation.</div>
       <button class="tbtn primary" id="btn-navlog" style="width:100%;justify-content:center;margin-top:10px;">🖨 Log de navigation</button>
@@ -1170,29 +1179,69 @@
     applyMapRotation();
   });
 
-  // Clic sur la carte pour ajouter un point de route.
-  // En mode "Cap en haut", la carte est visuellement pivotée : on corrige la position du clic
-  // pour retrouver les bonnes coordonnées GPS (Leaflet ne connaît pas cette rotation CSS).
-  map.on('click', (e) => {
-    if (rotationMode === 'track') return; // géré par le listener DOM corrigé ci-dessous
-    addWaypoint(e.latlng.lat, e.latlng.lng);
-  });
-
-  $('map').addEventListener('click', (evt) => {
-    if (rotationMode !== 'track') return;
+  // Ajout d'un point de route par APPUI LONG (évite les points créés par erreur au simple appui,
+  // qui sert désormais uniquement à interagir avec la carte : pan, sélection, popups...).
+  function screenPointToLatLng(clientX, clientY){
     const rect = $('map').getBoundingClientRect();
-    const size = map.getSize();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = evt.clientX - cx;
-    const dy = evt.clientY - cy;
-    const a = rad(state.currentHeading); // inverse de la rotation visuelle (-cap)
-    const ux = dx * Math.cos(a) - dy * Math.sin(a);
-    const uy = dx * Math.sin(a) + dy * Math.cos(a);
-    const containerPoint = L.point(size.x / 2 + ux, size.y / 2 + uy);
-    const latlng = map.containerPointToLatLng(containerPoint);
-    addWaypoint(latlng.lat, latlng.lng);
-  });
+    if (rotationMode === 'track'){
+      // La carte est visuellement pivotée en CSS : on corrige la position pour retrouver
+      // les bonnes coordonnées (Leaflet ne connaît pas cette rotation).
+      const size = map.getSize();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const a = rad(state.currentHeading);
+      const ux = dx * Math.cos(a) - dy * Math.sin(a);
+      const uy = dx * Math.sin(a) + dy * Math.cos(a);
+      return map.containerPointToLatLng(L.point(size.x / 2 + ux, size.y / 2 + uy));
+    }
+    return map.containerPointToLatLng(L.point(clientX - rect.left, clientY - rect.top));
+  }
+
+  const LONG_PRESS_MS = 550;
+  const LONG_PRESS_MOVE_TOLERANCE = 12;
+  let longPressTimer = null;
+  let longPressStart = null;
+
+  function eventPoint(e){
+    const t = (e.touches && e.touches.length) ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
+  }
+  function cancelLongPress(){
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressStart = null;
+  }
+  function startLongPress(e){
+    if (e.touches && e.touches.length > 1){ cancelLongPress(); return; } // pincement = zoom, pas un ajout
+    if (e.target.closest('.leaflet-marker-icon, .leaflet-popup, #turn-alert')) return; // pas sur un marqueur existant
+    const p = eventPoint(e);
+    longPressStart = p;
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      const latlng = screenPointToLatLng(p.x, p.y);
+      addWaypoint(latlng.lat, latlng.lng);
+      longPressStart = null;
+    }, LONG_PRESS_MS);
+  }
+  function moveLongPress(e){
+    if (!longPressStart) return;
+    const p = eventPoint(e);
+    const dist = Math.hypot(p.x - longPressStart.x, p.y - longPressStart.y);
+    if (dist > LONG_PRESS_MOVE_TOLERANCE) cancelLongPress();
+  }
+
+  const mapEl = $('map');
+  mapEl.addEventListener('touchstart', startLongPress, { passive: true });
+  mapEl.addEventListener('touchmove', moveLongPress, { passive: true });
+  mapEl.addEventListener('touchend', cancelLongPress);
+  mapEl.addEventListener('touchcancel', cancelLongPress);
+  mapEl.addEventListener('mousedown', startLongPress);
+  mapEl.addEventListener('mousemove', moveLongPress);
+  mapEl.addEventListener('mouseup', cancelLongPress);
+  mapEl.addEventListener('mouseleave', cancelLongPress);
+  mapEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
   /* ======================= NAV MATH ======================= */
   function distanceKm(lat1, lon1, lat2, lon2){
@@ -1692,6 +1741,14 @@
       requestWakeLock();
     }
   });
+  // iOS Safari n'accorde le Wake Lock que suite à une interaction utilisateur directe :
+  // comme le GPS démarre automatiquement au chargement (sans geste), on retente à la
+  // première interaction réelle de la personne (tap n'importe où), tant que le GPS tourne.
+  ['pointerdown','touchstart','click'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      if (state.gpsActive && !wakeLock) requestWakeLock();
+    }, { passive: true });
+  });
 
   function startGps(){
     if (!window.isSecureContext){
@@ -1835,7 +1892,7 @@
       '.print-btn{margin-top:18px;padding:8px 16px;font-size:13px;cursor:pointer;}' +
       '@media print{.print-btn{display:none;}}' +
       '</style></head><body>' +
-      '<h1>Log de navigation — NAVULM</h1>' +
+      '<h1>Log de navigation — AeroTrack</h1>' +
       '<div class="sub">' + dateStr + '</div>' +
       '<div class="hdr-grid">' +
         '<div class="hdr-card"><div class="l">Avion</div><div class="v">' + (aircraft ? aircraft.indicatif : '—') + '</div></div>' +
@@ -1860,7 +1917,7 @@
 
     const w = window.open('', '_blank');
     if (!w){
-      alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les pop-ups pour NAVULM puis réessaie.");
+      alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les pop-ups pour AeroTrack puis réessaie.");
       return;
     }
     w.document.open();
@@ -2502,6 +2559,159 @@
   });
   refreshOfflineTileCount();
 
+  /* ======================= DÉCODEUR METAR / TAF ======================= */
+  const WX_DESC = { MI:'peu profond', BC:'en bancs', PR:'partiel', DR:'chassant bas',
+    BL:'chassant haut', SH:'averses de', TS:'orage avec', FZ:'se congelant' };
+  const WX_PHEN = { DZ:'bruine', RA:'pluie', SN:'neige', SG:'neige en grains', IC:'cristaux de glace',
+    PL:'granules de glace', GR:'grêle', GS:'petite grêle', UP:'précipitation inconnue',
+    BR:'brume', FG:'brouillard', FU:'fumée', VA:'cendres volcaniques', DU:'poussière',
+    SA:'sable', HZ:'brume sèche', PY:'embruns', PO:'tourbillons de poussière', SQ:'grain',
+    FC:'tornade/trombe', SS:'tempête de sable', DS:'tempête de poussière' };
+  const CLOUD_TYPE = { FEW:'quelques nuages (1-2/8)', SCT:'nuages épars (3-4/8)',
+    BKN:'ciel fragmenté (5-7/8)', OVC:'ciel couvert (8/8)', VV:'visibilité verticale (ciel obscurci)' };
+
+  function decodeWindToken(tok){
+    const m = tok.match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/);
+    if (!m) return null;
+    const [, dir, spd, gust, unit] = m;
+    const unitLabel = unit === 'KT' ? 'kt' : unit === 'MPS' ? 'm/s' : 'km/h';
+    let s = 'Vent ' + (dir === 'VRB' ? 'variable' : dir + '°') + ' ' + parseInt(spd,10) + ' ' + unitLabel;
+    if (gust) s += ', rafales ' + parseInt(gust,10) + ' ' + unitLabel;
+    return s;
+  }
+  function decodeVisToken(tok){
+    if (tok === 'CAVOK') return 'CAVOK (visibilité ≥10 km, pas de nuage significatif, pas de phénomène)';
+    if (/^\d{4}$/.test(tok)){
+      const v = parseInt(tok,10);
+      return 'Visibilité ' + (v === 9999 ? '≥10 km' : v + ' m');
+    }
+    const sm = tok.match(/^(\d+)SM$/);
+    if (sm) return 'Visibilité ' + sm[1] + ' miles terrestres';
+    return null;
+  }
+  function decodeWeatherToken(tok){
+    const m = tok.match(/^(-|\+|VC)?((?:MI|BC|PR|DR|BL|SH|TS|FZ))?((?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS){1,2})$/);
+    if (!m) return null;
+    const [, intensity, desc, phenRaw] = m;
+    const intensityLabel = intensity === '-' ? 'faible ' : intensity === '+' ? 'fort ' : intensity === 'VC' ? 'à proximité : ' : '';
+    const descLabel = desc ? (WX_DESC[desc] || '') + ' ' : '';
+    const phens = phenRaw.match(/.{1,2}/g).map(p => WX_PHEN[p] || p).join(' + ');
+    return (intensityLabel + descLabel + phens).trim();
+  }
+  function decodeCloudToken(tok){
+    if (['NSC','NCD','CLR','SKC'].includes(tok)) return 'Ciel clair / pas de nuage significatif';
+    const m = tok.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?$/);
+    if (!m) return null;
+    const [, type, hgt, extra] = m;
+    let s = (CLOUD_TYPE[type] || type) + ' à ' + (parseInt(hgt,10) * 100) + ' ft';
+    if (extra === 'CB') s += ' (cumulonimbus)';
+    if (extra === 'TCU') s += ' (cumulus bourgeonnant)';
+    return s;
+  }
+  function decodeTempToken(tok){
+    const m = tok.match(/^(M?\d{2})\/(M?\d{2})$/);
+    if (!m) return null;
+    const t = (m[1][0] === 'M' ? -parseInt(m[1].slice(1),10) : parseInt(m[1],10));
+    const d = (m[2][0] === 'M' ? -parseInt(m[2].slice(1),10) : parseInt(m[2],10));
+    return 'Température ' + t + '°C, point de rosée ' + d + '°C';
+  }
+  function decodeQnhToken(tok){
+    const q = tok.match(/^Q(\d{4})$/);
+    if (q) return 'QNH ' + parseInt(q[1],10) + ' hPa';
+    const a = tok.match(/^A(\d{4})$/);
+    if (a) return 'QNH ' + (parseInt(a[1],10)/100).toFixed(2) + ' inHg';
+    return null;
+  }
+  function decodeTimeToken(tok){
+    const m = tok.match(/^(\d{2})(\d{2})(\d{2})Z$/);
+    if (!m) return null;
+    return 'Relevé le ' + m[1] + ' à ' + m[2] + ':' + m[3] + ' UTC';
+  }
+
+  // Décode une suite de groupes (corps de METAR ou d'une période de TAF) en lignes lisibles.
+  function decodeBodyTokens(tokens){
+    const lines = [];
+    tokens.forEach(tok => {
+      if (tok === 'AUTO'){ lines.push('Station automatique'); return; }
+      if (tok === 'NSIG'){ lines.push('Pas de changement significatif attendu'); return; }
+      let d;
+      if ((d = decodeWindToken(tok))){ lines.push(d); return; }
+      if ((d = decodeVisToken(tok))){ lines.push(d); return; }
+      if ((d = decodeWeatherToken(tok))){ lines.push('Phénomène : ' + d); return; }
+      if ((d = decodeCloudToken(tok))){ lines.push(d); return; }
+      if ((d = decodeTempToken(tok))){ lines.push(d); return; }
+      if ((d = decodeQnhToken(tok))){ lines.push(d); return; }
+    });
+    return lines;
+  }
+
+  function decodeMetar(raw){
+    if (!raw) return '<span style="color:#7e8fa3;">—</span>';
+    const clean = raw.replace(/=$/,'').trim();
+    const tokens = clean.split(/\s+/);
+    const icao = tokens[0];
+    const timeTok = tokens.find(t => /^\d{6}Z$/.test(t));
+    const header = (icao ? icao + ' — ' : '') + (timeTok ? decodeTimeToken(timeTok) : '');
+    const body = tokens.filter(t => t !== icao && t !== timeTok && t !== 'METAR' && t !== 'SPECI' && !/^RMK/.test(t));
+    const lines = decodeBodyTokens(body);
+    if (!lines.length) return '<span style="color:#7e8fa3;">Décodage indisponible pour ce message.</span>';
+    return '<div class="wd-block"><div class="wd-title">' + header + '</div><ul>' +
+      lines.map(l => '<li>' + l + '</li>').join('') + '</ul></div>';
+  }
+
+  function decodeTaf(raw){
+    if (!raw) return '<span style="color:#7e8fa3;">—</span>';
+    let clean = raw.replace(/=$/,'').trim().replace(/^TAF(\s+AMD|\s+COR)?\s+/, '');
+    const tokens = clean.split(/\s+/);
+    const icao = tokens[0];
+    const originTok = tokens.find(t => /^\d{6}Z$/.test(t));
+    const validTok = tokens.find(t => /^\d{4}\/\d{4}$/.test(t));
+
+    // Segmente le message en périodes : base + BECMG/TEMPO/FMxxxxxx/PROBxx
+    const changeRe = /^(BECMG|TEMPO|FM\d{6}|PROB\d{2})$/;
+    const segments = [];
+    let current = { header: 'Prévision de base', tokens: [] };
+    tokens.forEach(tok => {
+      if (changeRe.test(tok)){
+        if (current.tokens.length) segments.push(current);
+        let label;
+        if (tok === 'BECMG') label = 'Évolution progressive (BECMG)';
+        else if (tok === 'TEMPO') label = 'Variations temporaires (TEMPO)';
+        else if (tok.startsWith('FM')){
+          const m = tok.match(/^FM(\d{2})(\d{2})(\d{2})$/);
+          label = m ? 'À partir du ' + m[1] + ' à ' + m[2] + ':' + m[3] + ' UTC' : tok;
+        } else if (tok.startsWith('PROB')){
+          label = 'Probabilité ' + tok.slice(4) + '%';
+        } else label = tok;
+        current = { header: label, tokens: [] };
+      } else if (tok === icao || tok === originTok || tok === validTok || tok === 'TAF' || /^RMK/.test(tok)){
+        // ignoré, déjà traité dans l'en-tête
+      } else {
+        current.tokens.push(tok);
+      }
+    });
+    if (current.tokens.length) segments.push(current);
+
+    let html = '';
+    if (icao || originTok || validTok){
+      let headerLine = icao || '';
+      if (originTok) headerLine += ' — élaboré le ' + decodeTimeToken(originTok).replace('Relevé le ', '');
+      html += '<div class="wd-block"><div class="wd-title">' + headerLine + '</div><ul>';
+      if (validTok){
+        const vm = validTok.match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
+        if (vm) html += '<li>Validité : du ' + vm[1] + ' ' + vm[2] + 'h au ' + vm[3] + ' ' + vm[4] + 'h UTC</li>';
+      }
+      html += '</ul></div>';
+    }
+    segments.forEach(seg => {
+      const lines = decodeBodyTokens(seg.tokens);
+      if (!lines.length) return;
+      html += '<div class="wd-block"><div class="wd-title">' + seg.header + '</div><ul>' +
+        lines.map(l => '<li>' + l + '</li>').join('') + '</ul></div>';
+    });
+    return html || '<span style="color:#7e8fa3;">Décodage indisponible pour ce message.</span>';
+  }
+
   /* ======================= MÉTÉO LFOT (METAR / TAF) ======================= */
   function extractWeatherText(entry, keys){
     if (!entry) return null;
@@ -2516,14 +2726,20 @@
     $('metar-icao').value = icao;
     $('metar-text').textContent = 'Chargement…';
     $('taf-text').textContent = 'Chargement…';
+    $('metar-decoded').innerHTML = '—';
+    $('taf-decoded').innerHTML = '—';
 
     // METAR : VATSIM, relais direct du réseau OPMET avec CORS ouvert — fiable, sans proxy nécessaire.
     try {
       const res = await fetch('https://metar.vatsim.net/' + icao);
       const text = (await res.text()).trim();
-      $('metar-text').textContent = (res.ok && text && !text.toLowerCase().includes('not found'))
-        ? text
-        : "Aucun METAR disponible pour " + icao + " actuellement.";
+      if (res.ok && text && !text.toLowerCase().includes('not found')){
+        $('metar-text').textContent = text;
+        $('metar-decoded').innerHTML = decodeMetar(text);
+      } else {
+        $('metar-text').textContent = "Aucun METAR disponible pour " + icao + " actuellement.";
+        $('metar-decoded').innerHTML = '—';
+      }
     } catch(err){
       $('metar-text').textContent = "Échec du chargement METAR (" + err.message + ").";
     }
@@ -2536,7 +2752,13 @@
       const tafRes = await fetch(proxy + tafUrl);
       const tafJson = tafRes.ok ? await tafRes.json() : [];
       const tafText = extractWeatherText(tafJson[0], ['rawTAF','raw_text','rawText','taf_text']);
-      $('taf-text').textContent = tafText || "Aucun TAF disponible pour " + icao + " actuellement.";
+      if (tafText){
+        $('taf-text').textContent = tafText;
+        $('taf-decoded').innerHTML = decodeTaf(tafText);
+      } else {
+        $('taf-text').textContent = "Aucun TAF disponible pour " + icao + " actuellement.";
+        $('taf-decoded').innerHTML = '—';
+      }
     } catch(err){
       $('taf-text').textContent = "Échec du chargement TAF (" + err.message + ").";
     }
@@ -2547,7 +2769,7 @@
   /* ======================= HELP ======================= */
   const INFO_CONTENT =
     '<h3>Plan de vol</h3><ul>' +
-    '<li>Cliquez sur la carte pour ajouter un point de route.</li>' +
+    '<li>Appuyez longuement sur la carte (environ 0,5 s) pour ajouter un point de route.</li>' +
     '<li>Glissez un point pour le repositionner, ✕ pour le supprimer.</li>' +
     '<li>◎ définit le point actif : la mini boussole et l\'alerte de point tournant pointent vers lui.</li>' +
     '<li>Chaque point affiche le cumul de distance, temps et carburant depuis le départ.</li>' +
