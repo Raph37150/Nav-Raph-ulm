@@ -2088,7 +2088,18 @@
       iconAnchor: [17,17]
     });
   }
-  function ulmIcon(bearingDeg){ return aeroMarkerIcon('#0d6b2e', bearingDeg); }
+  function ulmIcon(){
+    return L.divIcon({
+      className: '',
+      html:
+        '<div style="width:30px;height:30px;border-radius:50%;background:#8b5cf6;' +
+        'border:2px solid #3b0764;display:flex;align-items:center;justify-content:center;' +
+        'color:#fff;font-family:\'JetBrains Mono\',monospace;font-weight:700;font-size:9px;' +
+        'letter-spacing:.3px;box-shadow:0 1px 3px rgba(0,0,0,.5);">ULM</div>',
+      iconSize: [30,30],
+      iconAnchor: [15,15]
+    });
+  }
   function aerodromeIcon(bearingDeg){ return aeroMarkerIcon('#1e3a8a', bearingDeg); }
 
   // Récupère les pistes OSM (aeroway=runway) de la zone pour orienter l'icône façon carte OACI
@@ -2157,14 +2168,15 @@
     const freqHtml = freqs.length
       ? '<br>' + freqs.map(f => '<b>' + f.label + ' :</b> ' + f.value + ' MHz').join('<br>')
       : '';
-    L.marker([lat, lng], { icon: ulmIcon(bearingDeg) })
+    L.marker([lat, lng], { icon: ulmIcon() })
       .bindPopup('<b>' + name + icao + '</b>' + info + freqHtml)
       .addTo(ulmLayer);
   }
 
   function addAerodromeMarker(lat, lng, tags, sourceLabel, bearingDeg){
     const name = (tags && (tags.name || tags['name:fr'])) || 'Aérodrome (sans nom)';
-    const icao = tags && tags.icao ? ' (' + tags.icao + ')' : '';
+    const icaoRaw = tags && tags.icao ? tags.icao : null;
+    const icao = icaoRaw ? ' (' + icaoRaw + ')' : '';
     const info = tags && tags.description ? '<br>' + tags.description : '';
     const freqs = extractFrequencies(tags);
     const freqHtml = freqs.length
