@@ -2,7 +2,14 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080b10">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>AeroTrack — GPS de navigation ULM</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -160,7 +167,7 @@
     background:var(--panel-2);
     color:var(--text);
     border:1px solid var(--border-soft);
-    font-size:calc(var(--icon-size) * 0.34);
+    font-size:calc(var(--icon-size) * 0.55);
     box-shadow:0 2px 8px rgba(0,0,0,.4);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
@@ -181,7 +188,7 @@
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
-  #fab-settings svg{width:42%;height:42%;fill:currentColor;}
+  #fab-settings svg{width:75%;height:75%;fill:var(--amber);}
   #fab-settings:active{transform:scale(0.95);}
 
   #btn-info{
@@ -469,7 +476,7 @@
     background-image:none!important;
     display:flex!important;align-items:center;justify-content:center;
   }
-  .leaflet-control-layers-toggle svg{width:46%;height:46%;fill:var(--text);}
+  .leaflet-control-layers-toggle svg{width:75%;height:75%;fill:var(--amber);}
   .leaflet-control-layers-expanded{padding:10px 12px;border-radius:10px;}
   .leaflet-control-layers label{font-family:var(--font-ui);font-size:12.5px;}
   .leaflet-top.leaflet-right{top:14px!important;right:14px!important;margin:0!important;}
@@ -533,6 +540,33 @@
     #brand .sub{display:none;}
     #hud{padding:6px 10px;gap:5px;}
     .hud-value{font-size:15px;}
+  }
+
+  /* ---------- Zones sécurisées (encoche / bords arrondis) ---------- */
+  #topbar{padding-top:calc(9px + env(safe-area-inset-top));}
+  #hud{bottom:calc(14px + env(safe-area-inset-bottom));}
+  #btn-info{
+    bottom:calc(22px + env(safe-area-inset-bottom));
+    right:calc(18px + env(safe-area-inset-right));
+  }
+  .leaflet-top.leaflet-right{top:calc(14px + env(safe-area-inset-top))!important;right:calc(14px + env(safe-area-inset-right))!important;}
+  #mini-compass-wrap{right:calc(14px + env(safe-area-inset-right));}
+  #btn-rotate-mode{right:calc(14px + env(safe-area-inset-right));}
+  #fab-settings{right:calc(14px + env(safe-area-inset-right));}
+
+  /* ---------- PAYSAGE : resserre les éléments pour éviter tout chevauchement ---------- */
+  @media (orientation:landscape) and (max-height:520px){
+    :root{ --icon-size:clamp(36px, 8vh, 44px); --icon-gap:6px; }
+    #topbar{padding:6px 12px;padding-top:calc(6px + env(safe-area-inset-top));}
+    #brand{font-size:13px;}
+    #brand svg{width:16px;height:16px;}
+    #brand .sub{display:none;}
+    #gps-status{max-width:160px;font-size:10.5px;padding:3px 7px;}
+    #hud{padding:4px 8px;gap:4px;bottom:calc(8px + env(safe-area-inset-bottom));}
+    .hud-block{padding:0 3px;}
+    .hud-label{font-size:7px;}
+    .hud-value{font-size:13px;}
+    #btn-info{width:36px;height:36px;bottom:calc(10px + env(safe-area-inset-bottom));right:calc(10px + env(safe-area-inset-right));}
   }
 </style>
 </head>
@@ -1088,7 +1122,7 @@
     bounds: FRANCE_BOUNDS,
     subdomains: 'abc',
     attribution: '&copy; OpenStreetMap contributeurs'
-  }).addTo(map);
+  });
 
   // Vue satellite (orthophotos IGN), diffusée en tuiles WMTS ouvertes et gratuites sur cartes.gouv.fr.
   const satelliteLayer = offlineTileLayer(
@@ -1106,6 +1140,7 @@
 
   // Carte OACI-VFR (IGN/SIA) — service "Cartes IGN classiques", diffusion libre et gratuite pour un
   // usage personnel depuis l'ouverture des données IGN (2021). Endpoint dédié avec clé d'accès publique.
+  // Fond de carte par défaut de l'application.
   const oaciLayer = offlineTileLayer(
     'https://data.geopf.fr/private/wmts?apikey=ign_scan_ws&SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
     '&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI&STYLE=normal&FORMAT=image/jpeg' +
@@ -1117,7 +1152,7 @@
       bounds: FRANCE_BOUNDS,
       attribution: 'Carte OACI-VFR &copy; IGN-F/Géoportail — SIA'
     }
-  );
+  ).addTo(map);
 
   // Plan IGN V2 (fond routier vectoriel IGN : routes, villes, relief), flux ouvert et gratuit.
   const planIgnLayer = offlineTileLayer(
@@ -1135,9 +1170,9 @@
 
   const layersControl = L.control.layers(
     {
+      'Carte OACI-VFR (IGN)': oaciLayer,
       'Fond OpenStreetMap': osmLayer,
       'Vue satellite (IGN)': satelliteLayer,
-      'Carte OACI-VFR (IGN)': oaciLayer,
       'Plan IGN routier': planIgnLayer
     },
     null,
@@ -2794,6 +2829,9 @@
     '<h3>Autres outils</h3><ul>' +
     '<li>METAR/TAF de LFOT actualisables dans le tiroir.</li>' +
     '<li>Enregistrez votre plan en JSON pour le recharger plus tard — aucune donnée n\'est envoyée en ligne.</li>' +
+    '</ul>' +
+    '<h3 style="color:#ff5a5a;">Avertissement</h3><ul>' +
+    '<li><b>AeroTrack est un outil d\'aide à la préparation et au suivi de vol. Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome). Vérifiez toujours ces sources avant et pendant le vol — les données affichées (OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes.</li>' +
     '</ul>';
 
   function openInfoModal(){
@@ -2809,6 +2847,23 @@
   $('btn-help').addEventListener('click', openInfoModal);
   $('info-modal-close').addEventListener('click', closeInfoModal);
   $('info-modal-backdrop').addEventListener('click', closeInfoModal);
+
+  // Avertissement affiché une fois par session à l'ouverture : ce programme ne remplace pas
+  // la documentation aéronautique officielle.
+  function showStartupDisclaimer(){
+    $('info-modal-body').innerHTML =
+      '<div class="wd-block" style="border-left-color:#ff5a5a;">' +
+        '<div class="wd-title" style="color:#ff5a5a;">Avertissement important</div>' +
+        '<p style="margin:6px 0 0;">AeroTrack est un outil d\'aide à la préparation et au suivi de vol.<br><br>' +
+        '<b>Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome).<br><br>' +
+        'Les données affichées (cartes OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes. Vérifiez toujours ces informations auprès des sources officielles avant et pendant le vol.</p>' +
+      '</div>' +
+      '<button class="tbtn primary" id="btn-disclaimer-ok" style="width:100%;justify-content:center;margin-top:14px;">J\'ai compris</button>';
+    $('info-modal').classList.remove('hidden');
+    $('info-modal-backdrop').classList.remove('hidden');
+    $('btn-disclaimer-ok').addEventListener('click', closeInfoModal);
+  }
+  showStartupDisclaimer();
 
   /* ======================= INPUT LISTENERS ======================= */
   ['in-speed','in-conso','in-fuel'].forEach(id => {
@@ -2873,6 +2928,82 @@
   $('fab-settings').addEventListener('click', openDrawer);
   $('drawer-close').addEventListener('click', closeDrawer);
   $('drawer-backdrop').addEventListener('click', closeDrawer);
+
+  /* ======================= PLEIN ÉCRAN EN PAYSAGE ======================= */
+  // Fonctionne sur Android/Chrome. Sur iPhone, Safari ne permet pas le plein écran via cette API :
+  // la vraie solution est d'ajouter AeroTrack à l'écran d'accueil (Partager → Sur l'écran d'accueil),
+  // ce que les balises meta de cette page préparent déjà (lancement sans barre Safari).
+  function tryFullscreenLandscape(){
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+    if (isLandscape && !document.fullscreenElement && document.documentElement.requestFullscreen){
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }
+  window.addEventListener('orientationchange', () => setTimeout(tryFullscreenLandscape, 300));
+  document.addEventListener('click', tryFullscreenLandscape, { once: true });
+
+  /* ======================= SERVICE WORKER (mode hors-ligne complet) ======================= */
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {
+        // Silencieux : l'appli fonctionne quand même, juste sans mise en cache de son propre code.
+      });
+    });
+  }
+
+  /* ======================= MÉMORISATION DE LA DERNIÈRE VUE ======================= */
+  const APP_STATE_DB = 'aerotrack-app-state';
+  let appStateDbPromise = null;
+  function openAppStateDB(){
+    if (appStateDbPromise) return appStateDbPromise;
+    appStateDbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(APP_STATE_DB, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('state'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return appStateDbPromise;
+  }
+  async function saveAppState(key, value){
+    try {
+      const db = await openAppStateDB();
+      db.transaction('state', 'readwrite').objectStore('state').put(value, key);
+    } catch(err){}
+  }
+  async function loadAppState(key){
+    try {
+      const db = await openAppStateDB();
+      return await new Promise((resolve) => {
+        const req = db.transaction('state', 'readonly').objectStore('state').get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => resolve(null);
+      });
+    } catch(err){ return null; }
+  }
+
+  const LAYER_BY_ID = { osm: osmLayer, satellite: satelliteLayer, oaci: oaciLayer, planign: planIgnLayer };
+  function saveCurrentView(){
+    const center = map.getCenter();
+    saveAppState('lastView', {
+      lat: center.lat, lng: center.lng, zoom: map.getZoom(),
+      layer: getActiveBaseLayer()._tileLayerId
+    });
+  }
+  map.on('moveend zoomend', saveCurrentView);
+  map.on('baselayerchange', saveCurrentView);
+
+  async function restoreLastView(){
+    const saved = await loadAppState('lastView');
+    if (!saved) return;
+    if (saved.layer && LAYER_BY_ID[saved.layer] && saved.layer !== 'oaci'){
+      map.removeLayer(oaciLayer);
+      LAYER_BY_ID[saved.layer].addTo(map);
+    }
+    if (saved.lat != null && saved.lng != null && saved.zoom != null){
+      map.setView([saved.lat, saved.lng], saved.zoom);
+    }
+  }
+  restoreLastView();
 
   /* ======================= INIT ======================= */
   drawCompass(0, null);
