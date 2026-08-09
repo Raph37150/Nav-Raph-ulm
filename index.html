@@ -33,6 +33,7 @@
     --font-mono:'JetBrains Mono',monospace;
     --icon-size:clamp(42px, 12vw, 52px);
     --icon-gap:8px;
+    --top-safe:calc(14px + env(safe-area-inset-top));
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
@@ -147,7 +148,7 @@
   /* ---------- Mini boussole (haut à droite, toujours visible) ---------- */
   #mini-compass-wrap{
     position:absolute;
-    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 1);
+    top:calc(var(--top-safe) + (var(--icon-size) + var(--icon-gap)) * 1);
     right:14px;
     z-index:900;
     width:var(--icon-size);height:var(--icon-size);
@@ -159,7 +160,7 @@
   /* ---------- Bascule Nord en haut / Cap en haut (sous la mini boussole) ---------- */
   #btn-rotate-mode{
     position:absolute;
-    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 2);
+    top:calc(var(--top-safe) + (var(--icon-size) + var(--icon-gap)) * 2);
     right:14px;
     z-index:900;
     width:var(--icon-size);height:var(--icon-size);
@@ -176,7 +177,7 @@
 
   #fab-settings{
     position:absolute;
-    top:calc(14px + (var(--icon-size) + var(--icon-gap)) * 3);
+    top:calc(var(--top-safe) + (var(--icon-size) + var(--icon-gap)) * 3);
     right:14px;
     z-index:900;
     width:var(--icon-size);height:var(--icon-size);
@@ -549,7 +550,7 @@
     bottom:calc(22px + env(safe-area-inset-bottom));
     right:calc(18px + env(safe-area-inset-right));
   }
-  .leaflet-top.leaflet-right{top:calc(14px + env(safe-area-inset-top))!important;right:calc(14px + env(safe-area-inset-right))!important;}
+  .leaflet-top.leaflet-right{top:var(--top-safe)!important;right:calc(14px + env(safe-area-inset-right))!important;}
   #mini-compass-wrap{right:calc(14px + env(safe-area-inset-right));}
   #btn-rotate-mode{right:calc(14px + env(safe-area-inset-right));}
   #fab-settings{right:calc(14px + env(safe-area-inset-right));}
