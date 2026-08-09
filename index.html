@@ -212,6 +212,24 @@
   }
   #btn-info:active{transform:scale(0.95);}
 
+  #btn-recenter{
+    position:absolute;
+    bottom:22px;
+    left:14px;
+    z-index:1500;
+    width:clamp(38px, 10vw, 44px);height:clamp(38px, 10vw, 44px);
+    border-radius:50%;
+    background:var(--panel-2);
+    color:var(--blue);
+    border:1.5px solid var(--blue);
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #btn-recenter svg{width:55%;height:55%;fill:currentColor;}
+  #btn-recenter:active{transform:scale(0.95);}
+  #btn-recenter.off{opacity:.4;cursor:default;}
+
   #info-modal-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.55);
     z-index:2990;
@@ -395,6 +413,15 @@
     font-family:var(--font-ui);font-weight:600;font-size:13px;padding:2px 0;
   }
   .wpt-actions{display:flex;gap:5px;}
+  .wpt-extra{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    margin-top:6px;padding-top:6px;border-top:1px dashed var(--border-soft);
+  }
+  .wpt-extra label{display:block;font-size:9px;color:var(--text-dim2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+  .wpt-extra input[type=text]{
+    width:100%;background:var(--panel);border:1px solid var(--border-soft);border-radius:5px;
+    color:var(--text);font-family:var(--font-mono);font-size:12px;padding:5px 7px;
+  }
 
   /* ---------- AIRCRAFT LIST ---------- */
   #aircraft-list{display:flex;flex-direction:column;gap:8px;}
@@ -568,6 +595,7 @@
     .hud-label{font-size:7px;}
     .hud-value{font-size:13px;}
     #btn-info{width:36px;height:36px;bottom:calc(10px + env(safe-area-inset-bottom));right:calc(10px + env(safe-area-inset-right));}
+    #btn-recenter{width:36px;height:36px;bottom:calc(10px + env(safe-area-inset-bottom));left:calc(10px + env(safe-area-inset-left));}
   }
 </style>
 </head>
@@ -587,6 +615,10 @@
     <div id="map"></div>
 
     <div id="turn-alert" class="hidden"></div>
+
+    <button id="btn-recenter" title="Recentrer sur ma position">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm0 6a2 2 0 110-4 2 2 0 010 4zm9-5h-2.05A7.002 7.002 0 0013 2.05V0h-2v2.05A7.002 7.002 0 004.05 9H2v2h2.05A7.002 7.002 0 0011 18.95V21h2v-2.05A7.002 7.002 0 0020.95 12H23v-2h-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/></svg>
+    </button>
 
     <div id="hud">
       <div class="hud-block">
@@ -879,6 +911,7 @@
     routeLine: null,
     activeLegLine: null,
     trackPoints: [],      // historique GPS pour la trace en pointillé
+    hasCenteredOnStart: false,
     trackLine: null,
     pred2Marker: null,
     pred5Marker: null,
@@ -1360,7 +1393,9 @@
       id: id,
       name: name || ('WPT' + id),
       lat: lat,
-      lng: lng
+      lng: lng,
+      altitude: '',
+      frequency: ''
     };
     const marker = L.marker([lat,lng], {
       draggable: true,
@@ -1519,6 +1554,13 @@
         '</div>';
       card.appendChild(head);
 
+      const extraDiv = document.createElement('div');
+      extraDiv.className = 'wpt-extra';
+      extraDiv.innerHTML =
+        '<div><label>Altitude</label><input type="text" class="wpt-alt" placeholder="ft" value="'+(w.altitude||'').replace(/"/g,'')+'" data-id="'+w.id+'"></div>' +
+        '<div><label>Fréquence</label><input type="text" class="wpt-freq" placeholder="MHz" value="'+(w.frequency||'').replace(/"/g,'')+'" data-id="'+w.id+'"></div>';
+      card.appendChild(extraDiv);
+
       const leg = legs[i-1];
       if (leg){
         cumDist += leg.dist;
@@ -1548,7 +1590,10 @@
     list.querySelectorAll('input[type=text]').forEach(inp => {
       inp.addEventListener('input', () => {
         const w = state.waypoints.find(w => w.id === parseInt(inp.dataset.id,10));
-        if (w){ w.name = inp.value || w.name; }
+        if (!w) return;
+        if (inp.classList.contains('wpt-alt')) w.altitude = inp.value;
+        else if (inp.classList.contains('wpt-freq')) w.frequency = inp.value;
+        else w.name = inp.value || w.name;
       });
     });
     list.querySelectorAll('.icon-btn.act').forEach(btn => {
@@ -1695,6 +1740,13 @@
     } else {
       state.planeMarker.setLatLng([lat,lng]);
       state.planeMarker.setIcon(planeIcon(heading));
+    }
+
+    // Au tout premier point GPS reçu au démarrage, centre la carte sur la position actuelle
+    // avec une zone d'environ 30 km de rayon autour (remplace la dernière vue mémorisée).
+    if (!state.hasCenteredOnStart){
+      state.hasCenteredOnStart = true;
+      map.fitBounds(L.latLng(lat, lng).toBounds(60000));
     }
 
     // Trace GPS en pointillé
@@ -1887,67 +1939,102 @@
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
     const aircraft = selectedAircraftData;
+    const cruiseSpeed = parseFloat($('in-speed').value) || 0;
     const conso = parseFloat($('in-conso').value) || 0;
     const fuelOnboard = parseFloat($('in-fuel').value) || 0;
 
+    const esc = (s) => (s || '').toString().replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Une ligne par point du plan : le premier (départ) n'a pas de tronçon amont.
     let rows = '';
     let cumDist = 0, cumTime = 0, cumFuel = 0;
-    legs.forEach((leg, i) => {
-      cumDist += leg.dist; cumTime += leg.ete; cumFuel += leg.fuel;
+    state.waypoints.forEach((w, i) => {
+      const leg = legs[i-1]; // tronçon menant à ce point (absent pour le départ)
+      if (leg){ cumDist += leg.dist; cumTime += leg.ete; cumFuel += leg.fuel; }
       rows += '<tr>' +
-        '<td>' + (i+1) + '</td>' +
-        '<td>' + leg.from.name + ' → ' + leg.to.name + '</td>' +
-        '<td>' + Math.round(leg.tc) + '°</td>' +
-        '<td>' + Math.round(leg.gs) + ' km/h</td>' +
-        '<td>' + leg.dist.toFixed(1) + ' km</td>' +
-        '<td>' + fmtMin(leg.ete) + '</td>' +
-        '<td>' + leg.fuel.toFixed(1) + ' L</td>' +
-        '<td>' + cumDist.toFixed(1) + ' km</td>' +
-        '<td>' + fmtMin(cumTime) + '</td>' +
-        '<td>' + cumFuel.toFixed(1) + ' L</td>' +
+        '<td class="c-idx">' + (i+1) + '</td>' +
+        '<td class="c-name">' + esc(w.name) + '</td>' +
+        '<td>' + esc(w.altitude) + '</td>' +
+        '<td>' + esc(w.frequency) + '</td>' +
+        '<td>' + (leg ? Math.round(leg.tc) + '°' : '—') + '</td>' +
+        '<td>' + (leg ? Math.round(leg.gs) + ' km/h' : '—') + '</td>' +
+        '<td>' + (leg ? leg.dist.toFixed(1) + ' km' : '—') + '</td>' +
+        '<td>' + (leg ? fmtMin(leg.ete) : '—') + '</td>' +
+        '<td>' + (leg ? leg.fuel.toFixed(1) + ' L' : '—') + '</td>' +
+        '<td>' + (i>0 ? fmtMin(cumTime) : '—') + '</td>' +
+        '<td>' + (i>0 ? cumFuel.toFixed(1) + ' L' : '—') + '</td>' +
+        '<td class="c-blank"></td>' +
+        '<td class="c-blank"></td>' +
         '</tr>';
     });
 
     const reserve = (30/60) * conso;
     const margin = fuelOnboard - cumFuel - reserve;
+    const totalTimeStr = fmtHM(cumTime);
 
-    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Log de navigation</title><style>' +
-      'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}' +
-      'h1{font-size:20px;margin-bottom:2px;}' +
-      '.sub{color:#555;font-size:13px;margin-bottom:18px;}' +
-      '.hdr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;}' +
-      '.hdr-card{border:1px solid #ccc;border-radius:6px;padding:8px 10px;}' +
-      '.hdr-card .l{font-size:10px;text-transform:uppercase;color:#777;letter-spacing:.5px;}' +
-      '.hdr-card .v{font-size:15px;font-weight:700;margin-top:2px;}' +
-      'table{width:100%;border-collapse:collapse;font-size:12.5px;}' +
-      'th,td{border:1px solid #bbb;padding:6px 7px;text-align:left;}' +
-      'th{background:#eee;}' +
-      'tfoot td{font-weight:700;background:#f5f5f5;}' +
+    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Log de navigation — AeroTrack</title><style>' +
+      '@page{size:A4 landscape;margin:12mm;}' +
+      '*{box-sizing:border-box;}' +
+      'body{font-family:"Helvetica Neue",Arial,sans-serif;color:#111;margin:0;padding:20px;}' +
+      '.doc-header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #111;padding-bottom:10px;margin-bottom:14px;}' +
+      '.doc-title{font-size:22px;font-weight:800;letter-spacing:.5px;}' +
+      '.doc-title span{color:#b8860b;}' +
+      '.doc-sub{font-size:11px;color:#555;margin-top:2px;}' +
+      '.doc-date{text-align:right;font-size:12px;color:#333;}' +
+      '.hdr-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px;}' +
+      '.hdr-card{border:1px solid #999;border-radius:4px;padding:7px 9px;background:#fafafa;}' +
+      '.hdr-card.fill{background:#fff;}' +
+      '.hdr-card .l{font-size:9px;text-transform:uppercase;color:#666;letter-spacing:.5px;}' +
+      '.hdr-card .v{font-size:14px;font-weight:700;margin-top:3px;min-height:17px;}' +
+      '.hdr-card .v.blank{border-bottom:1px solid #999;min-height:17px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}' +
+      'thead th{background:#1a1300;color:#ffb300;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;' +
+        'padding:6px 4px;text-align:center;border:1px solid #1a1300;}' +
+      'tbody td{border:1px solid #999;padding:5px 4px;text-align:center;}' +
+      'tbody tr:nth-child(even){background:#f6f6f6;}' +
+      '.c-idx{width:24px;font-weight:700;background:#eee!important;}' +
+      '.c-name{text-align:left;font-weight:700;padding-left:6px!important;}' +
+      '.c-blank{background:#fff!important;}' +
+      'tfoot td{font-weight:700;background:#eee;border:1px solid #999;padding:7px 6px;}' +
       '.margin-warn{color:#b00000;}' +
       '.margin-ok{color:#0a7a2f;}' +
-      '.print-btn{margin-top:18px;padding:8px 16px;font-size:13px;cursor:pointer;}' +
+      '.foot-note{margin-top:14px;font-size:10px;color:#666;line-height:1.5;}' +
+      '.print-btn{margin-top:18px;padding:9px 18px;font-size:13px;cursor:pointer;background:#1a1300;color:#ffb300;border:none;border-radius:6px;font-weight:700;}' +
       '@media print{.print-btn{display:none;}}' +
       '</style></head><body>' +
-      '<h1>Log de navigation — AeroTrack</h1>' +
-      '<div class="sub">' + dateStr + '</div>' +
+      '<div class="doc-header">' +
+        '<div><div class="doc-title">Aero<span>Track</span> — Log de navigation</div>' +
+        '<div class="doc-sub">Document généré automatiquement — ne remplace pas la documentation officielle</div></div>' +
+        '<div class="doc-date">' + dateStr + '</div>' +
+      '</div>' +
       '<div class="hdr-grid">' +
-        '<div class="hdr-card"><div class="l">Avion</div><div class="v">' + (aircraft ? aircraft.indicatif : '—') + '</div></div>' +
-        '<div class="hdr-card"><div class="l">Modèle</div><div class="v">' + (aircraft ? aircraft.modele : '—') + '</div></div>' +
-        '<div class="hdr-card"><div class="l">Vitesse croisière</div><div class="v">' + (parseFloat($('in-speed').value)||0) + ' km/h</div></div>' +
+        '<div class="hdr-card"><div class="l">Avion</div><div class="v">' + esc(aircraft ? aircraft.indicatif : '—') + '</div></div>' +
+        '<div class="hdr-card"><div class="l">Modèle</div><div class="v">' + esc(aircraft ? aircraft.modele : '—') + '</div></div>' +
+        '<div class="hdr-card"><div class="l">Vit. croisière</div><div class="v">' + cruiseSpeed + ' km/h</div></div>' +
         '<div class="hdr-card"><div class="l">Consommation</div><div class="v">' + conso + ' L/h</div></div>' +
+        '<div class="hdr-card"><div class="l">Carburant à bord</div><div class="v">' + fuelOnboard.toFixed(1) + ' L</div></div>' +
+        '<div class="hdr-card"><div class="l">Temps total prévu</div><div class="v">' + totalTimeStr + '</div></div>' +
+        '<div class="hdr-card fill"><div class="l">Pilote</div><div class="v blank">&nbsp;</div></div>' +
+        '<div class="hdr-card fill"><div class="l">N° de vol</div><div class="v blank">&nbsp;</div></div>' +
+        '<div class="hdr-card fill"><div class="l">Terrain de déroutement</div><div class="v blank">&nbsp;</div></div>' +
+        '<div class="hdr-card fill"><div class="l">Heure de départ prévue</div><div class="v blank">&nbsp;</div></div>' +
+        '<div class="hdr-card fill"><div class="l">QNH</div><div class="v blank">&nbsp;</div></div>' +
+        '<div class="hdr-card fill"><div class="l">Vent (dir/vit)</div><div class="v blank">&nbsp;</div></div>' +
       '</div>' +
       '<table><thead><tr>' +
-        '<th>#</th><th>Étape</th><th>Route</th><th>Vs/sol</th><th>Distance</th><th>Temps</th><th>Carburant</th>' +
-        '<th>Cumul dist.</th><th>Cumul temps</th><th>Cumul carb.</th>' +
+        '<th>#</th><th>Point</th><th>Altitude</th><th>Fréquence</th><th>Route</th><th>Vit/sol</th>' +
+        '<th>Distance</th><th>Temps étape</th><th>Carb. étape</th><th>Temps cumulé</th><th>Carb. cumulé</th>' +
+        '<th>Heure réelle</th><th>Remarques</th>' +
       '</tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr>' +
-        '<td colspan="4">Totaux</td>' +
+        '<td colspan="6">Totaux</td>' +
         '<td>' + cumDist.toFixed(1) + ' km</td>' +
         '<td>' + fmtMin(cumTime) + '</td>' +
         '<td>' + cumFuel.toFixed(1) + ' L</td>' +
-        '<td colspan="3">Carburant à bord : ' + fuelOnboard.toFixed(1) + ' L — Marge (réserve 30 min incluse) : ' +
+        '<td colspan="4">Marge carburant (réserve 30 min incluse) : ' +
           '<span class="' + (margin>=0?'margin-ok':'margin-warn') + '">' + (margin>=0?'+':'') + margin.toFixed(1) + ' L</span></td>' +
       '</tr></tfoot></table>' +
+      '<div class="foot-note">Altitudes et fréquences saisies manuellement pour chaque point dans AeroTrack. Vitesses et temps calculés à partir de la vitesse de croisière déclarée, sans correction de vent. Vérifiez ces éléments avec la documentation officielle (AIP, NOTAM) avant le vol.</div>' +
       '<button class="print-btn" onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button>' +
       '</body></html>';
 
@@ -2821,6 +2908,7 @@
     '<li>Deux points "2\'" et "5\'" et un vecteur montrent votre position prévue selon le cap et la vitesse actuels.</li>' +
     '<li>Une alerte apparaît à l\'approche d\'un point tournant, avec le nouveau cap et le temps jusqu\'au suivant.</li>' +
     '<li>Bouton ⇧/✈ : bascule Nord en haut / Cap en haut (la carte pivote avec votre trajectoire).</li>' +
+    '<li>Bouton bleu en bas à gauche : recentre instantanément la carte sur votre position GPS.</li>' +
     '</ul>' +
     '<h3>Cartes et couches</h3><ul>' +
     '<li>Sélecteur de calques (icône en haut à droite) : OpenStreetMap, satellite, OACI-VFR ou Plan IGN routier.</li>' +
@@ -2846,6 +2934,14 @@
     $('info-modal-backdrop').classList.add('hidden');
   }
   $('btn-info').addEventListener('click', openInfoModal);
+
+  $('btn-recenter').addEventListener('click', () => {
+    if (!state.currentPos){
+      alert("Position GPS pas encore disponible.");
+      return;
+    }
+    map.setView([state.currentPos.lat, state.currentPos.lng], map.getZoom());
+  });
   $('btn-help').addEventListener('click', openInfoModal);
   $('info-modal-close').addEventListener('click', closeInfoModal);
   $('info-modal-backdrop').addEventListener('click', closeInfoModal);
