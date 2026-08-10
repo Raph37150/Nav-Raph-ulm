@@ -121,6 +121,31 @@
   #turn-alert .ta-hint{font-size:10px;opacity:.7;margin-top:4px;}
   @keyframes turnAlertIn{from{opacity:0;transform:translateX(-50%) translateY(-12px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
 
+  #loading-toast{
+    position:absolute;
+    top:14px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:1550;
+    background:rgba(15,22,32,.92);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:20px;
+    padding:7px 16px;
+    font-size:11.5px;
+    font-family:var(--font-ui);
+    display:flex;align-items:center;gap:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,.4);
+    pointer-events:none;
+  }
+  #loading-toast.hidden{display:none;}
+  #loading-toast .lt-spinner{
+    width:12px;height:12px;border-radius:50%;
+    border:2px solid var(--border-soft);border-top-color:var(--amber);
+    animation:ltSpin .7s linear infinite;
+  }
+  @keyframes ltSpin{to{transform:rotate(360deg);}}
+
   /* ---------- HUD (cap / vitesse / altitude, toujours visible, en bas au centre) ---------- */
   #hud{
     position:absolute;
@@ -226,7 +251,7 @@
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
-  #btn-recenter svg{width:55%;height:55%;fill:currentColor;}
+  #btn-recenter svg{width:78%;height:78%;fill:currentColor;}
   #btn-recenter:active{transform:scale(0.95);}
   #btn-recenter.off{opacity:.4;cursor:default;}
 
@@ -615,6 +640,8 @@
     <div id="map"></div>
 
     <div id="turn-alert" class="hidden"></div>
+
+    <div id="loading-toast" class="hidden"></div>
 
     <button id="btn-recenter" title="Recentrer sur ma position">
       <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm0 6a2 2 0 110-4 2 2 0 010 4zm9-5h-2.05A7.002 7.002 0 0013 2.05V0h-2v2.05A7.002 7.002 0 004.05 9H2v2h2.05A7.002 7.002 0 0011 18.95V21h2v-2.05A7.002 7.002 0 0020.95 12H23v-2h-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/></svg>
@@ -2250,6 +2277,20 @@
   }
 
   let ulmLayer = L.layerGroup().addTo(map);
+
+  // Petit indicateur de chargement visible sur la carte, pour les chargements automatiques
+  // au démarrage (bases ULM, aérodromes) qui prennent quelques secondes.
+  let activeLoadings = 0;
+  function beginLoadingToast(label){
+    activeLoadings++;
+    const el = $('loading-toast');
+    el.innerHTML = '<span class="lt-spinner"></span><span>' + label + '</span>';
+    el.classList.remove('hidden');
+  }
+  function endLoadingToast(){
+    activeLoadings = Math.max(0, activeLoadings - 1);
+    if (activeLoadings === 0) $('loading-toast').classList.add('hidden');
+  }
   let aerodromeLayer = L.layerGroup().addTo(map);
 
   function aeroMarkerIcon(color, bearingDeg){
@@ -2372,6 +2413,7 @@
     const btn = $('btn-load-ulm');
     btn.disabled = true;
     statusEl.textContent = 'Chargement depuis OpenStreetMap…';
+    beginLoadingToast('Chargement des bases ULM…');
     const b = bboxAroundTours(ULM_RADIUS_KM);
     const query = '[out:json][timeout:25];(' +
       'node["aeroway"="airfield"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
@@ -2406,6 +2448,7 @@
       statusEl.textContent = "Échec du chargement (" + err.message + "). Réessaie dans un instant.";
     } finally {
       btn.disabled = false;
+      endLoadingToast();
     }
   }
   $('btn-load-ulm').addEventListener('click', loadUlmBases);
@@ -2463,6 +2506,7 @@
     const btn = $('btn-load-ad');
     btn.disabled = true;
     statusEl.textContent = 'Chargement depuis OpenStreetMap…';
+    beginLoadingToast('Chargement des aérodromes…');
     const b = bboxAroundTours(ULM_RADIUS_KM);
     const query = '[out:json][timeout:25];(' +
       'node["aeroway"="aerodrome"](' + b.south + ',' + b.west + ',' + b.north + ',' + b.east + ');' +
@@ -2500,6 +2544,7 @@
       statusEl.textContent = "Échec du chargement OpenStreetMap (" + err.message + "). Les aérodromes de référence (Tours, Amboise) restent affichés.";
     } finally {
       btn.disabled = false;
+      endLoadingToast();
     }
   }
   $('btn-load-ad').addEventListener('click', loadAerodromes);
@@ -2619,7 +2664,7 @@
     const bounds = map.getBounds();
     const currentZoom = map.getZoom();
     const minZ = currentZoom;
-    const maxZ = Math.min(currentZoom + 3, layer.options.maxZoom);
+    const maxZ = Math.min(currentZoom + 2, layer.options.maxZoom);
 
     // Construit la liste de toutes les tuiles à télécharger, zoom par zoom.
     const tasks = [];
@@ -2633,38 +2678,60 @@
       }
     }
 
-    if (tasks.length > 6000){
+    if (tasks.length > 4000){
       progress.textContent = 'Zone trop grande (' + tasks.length + ' tuiles). Zoome un peu plus avant de télécharger.';
       btn.disabled = false;
       return;
     }
 
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    async function fetchTileWithRetry(url, attempts){
+      for (let i = 0; i < attempts; i++){
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return await res.blob();
+        } catch(err){
+          if (i < attempts - 1) await sleep(300 * (i + 1)); // laisse respirer le serveur avant de réessayer
+        }
+      }
+      return null;
+    }
+
     let done = 0, failed = 0;
     const layerId = layer._tileLayerId;
-    // Téléchargements en petits lots parallèles pour rester raisonnable pour le serveur et le navigateur.
-    const BATCH = 6;
+    // Lots plus petits + pause entre chaque lot : certains fournisseurs de tuiles (OpenStreetMap
+    // en particulier) limitent ou bloquent les téléchargements en masse trop rapides.
+    const BATCH = 3;
+    const BATCH_DELAY_MS = 250;
     for (let i = 0; i < tasks.length; i += BATCH){
       const batch = tasks.slice(i, i + BATCH);
       await Promise.all(batch.map(async (t) => {
         const key = layerId + '/' + t.z + '/' + t.x + '/' + t.y;
         const existing = await getTileFromDB(key);
         if (existing){ done++; return; }
-        try {
-          const url = layer.getTileUrl({ x: t.x, y: t.y, z: t.z });
-          const res = await fetch(url);
-          if (!res.ok) throw new Error();
-          const blob = await res.blob();
+        const url = layer.getTileUrl({ x: t.x, y: t.y, z: t.z });
+        const blob = await fetchTileWithRetry(url, 3);
+        if (blob){
           await putTileToDB(key, blob);
           done++;
-        } catch(err){
+        } else {
           failed++;
         }
       }));
       progress.textContent = 'Téléchargement… ' + (done + failed) + ' / ' + tasks.length + ' tuiles (' + failed + ' échecs)';
+      await sleep(BATCH_DELAY_MS);
     }
 
-    progress.textContent = 'Terminé : ' + done + ' tuiles enregistrées pour un usage hors-ligne' +
-      (failed ? ' (' + failed + ' échecs, réessaie si besoin)' : '') + '.';
+    let finalMsg = 'Terminé : ' + done + ' tuiles enregistrées pour un usage hors-ligne.';
+    if (failed > 0){
+      finalMsg += ' ' + failed + ' échec(s)' +
+        (layer._tileLayerId === 'osm'
+          ? " — OpenStreetMap limite les téléchargements en masse ; réessaie dans quelques minutes, ou utilise plutôt la vue satellite / Plan IGN routier / OACI-VFR (IGN) pour le pré-téléchargement, généralement plus tolérants."
+          : '. Réessaie dans un instant.');
+    }
+    progress.textContent = finalMsg;
     btn.disabled = false;
     refreshOfflineTileCount();
   }
