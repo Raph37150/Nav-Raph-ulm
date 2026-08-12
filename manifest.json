@@ -1,6 +1,6 @@
 {
-  "name": "AeroTrack — GPS de navigation ULM",
-  "short_name": "AeroTrack",
+  "name": "AltiNav — GPS de navigation ULM",
+  "short_name": "AltiNav",
   "description": "GPS de navigation pour ULM : plan de vol, suivi GPS temps réel, cartes aéronautiques et hors-ligne.",
   "start_url": "./index.html",
   "scope": "./",

@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>AeroTrack — GPS de navigation ULM</title>
+<title>AltiNav — GPS de navigation ULM</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -604,6 +604,10 @@
     bottom:calc(22px + env(safe-area-inset-bottom));
     right:calc(18px + env(safe-area-inset-right));
   }
+  #btn-recenter{
+    bottom:calc(22px + env(safe-area-inset-bottom));
+    left:calc(14px + env(safe-area-inset-left));
+  }
   .leaflet-top.leaflet-right{top:var(--top-safe)!important;right:calc(14px + env(safe-area-inset-right))!important;}
   #mini-compass-wrap{right:calc(14px + env(safe-area-inset-right));}
   #btn-rotate-mode{right:calc(14px + env(safe-area-inset-right));}
@@ -632,7 +636,7 @@
   <div id="topbar">
     <div id="brand">
       <svg viewBox="0 0 24 24"><path d="M22 16v-2l-8.5-5V3.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5V9L2 14v2l8.5-2.5V19L8 20.5V22l4-1 4 1v-1.5L13.5 19v-5.5L22 16z"/></svg>
-      AeroTrack <span class="sub">GPS DE NAVIGATION ULM</span>
+      AltiNav <span class="sub">GPS DE NAVIGATION ULM</span>
     </div>
     <div id="gps-status"><span id="gps-dot"></span><span id="gps-text">GPS inactif</span></div>
     <div id="topbar-spacer"></div>
@@ -689,7 +693,7 @@
     <div id="info-modal-backdrop" class="hidden"></div>
     <div id="info-modal" class="hidden">
       <div id="info-modal-header">
-        <h2>Notice AeroTrack</h2>
+        <h2>Notice AltiNav</h2>
         <button id="info-modal-close">✕</button>
       </div>
       <div id="info-modal-body"></div>
@@ -2089,7 +2093,7 @@
     const margin = fuelOnboard - cumFuel - reserve;
     const totalTimeStr = fmtHM(cumTime);
 
-    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Log de navigation — AeroTrack</title><style>' +
+    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Log de navigation — AltiNav</title><style>' +
       '@page{size:A4 landscape;margin:12mm;}' +
       '*{box-sizing:border-box;}' +
       'body{font-family:"Helvetica Neue",Arial,sans-serif;color:#111;margin:0;padding:20px;}' +
@@ -2151,13 +2155,13 @@
         '<td colspan="4">Marge carburant (réserve 30 min incluse) : ' +
           '<span class="' + (margin>=0?'margin-ok':'margin-warn') + '">' + (margin>=0?'+':'') + margin.toFixed(1) + ' L</span></td>' +
       '</tr></tfoot></table>' +
-      '<div class="foot-note">Altitudes et fréquences saisies manuellement pour chaque point dans AeroTrack. Vitesses et temps calculés à partir de la vitesse de croisière déclarée, sans correction de vent. Vérifiez ces éléments avec la documentation officielle (AIP, NOTAM) avant le vol.</div>' +
+      '<div class="foot-note">Altitudes et fréquences saisies manuellement pour chaque point dans AltiNav. Vitesses et temps calculés à partir de la vitesse de croisière déclarée, sans correction de vent. Vérifiez ces éléments avec la documentation officielle (AIP, NOTAM) avant le vol.</div>' +
       '<button class="print-btn" onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button>' +
       '</body></html>';
 
     const w = window.open('', '_blank');
     if (!w){
-      alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les pop-ups pour AeroTrack puis réessaie.");
+      alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les pop-ups pour AltiNav puis réessaie.");
       return;
     }
     w.document.open();
@@ -2175,8 +2179,8 @@
     const now = new Date();
     const stamp = now.toISOString();
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      '<gpx version="1.1" creator="AeroTrack" xmlns="http://www.topografix.com/GPX/1/1">\n' +
-      '  <metadata><name>Trace AeroTrack ' + stamp.slice(0,10) + '</name><time>' + stamp + '</time></metadata>\n' +
+      '<gpx version="1.1" creator="AltiNav" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+      '  <metadata><name>Trace AltiNav ' + stamp.slice(0,10) + '</name><time>' + stamp + '</time></metadata>\n' +
       '  <trk><name>Trace de vol</name><trkseg>\n';
     state.trackPoints.forEach(([lat, lng]) => {
       gpx += '    <trkpt lat="' + lat.toFixed(6) + '" lon="' + lng.toFixed(6) + '"></trkpt>\n';
@@ -3278,8 +3282,18 @@
     '<li>METAR/TAF de LFOT actualisables dans le tiroir.</li>' +
     '<li>Enregistrez votre plan en JSON pour le recharger plus tard — aucune donnée n\'est envoyée en ligne.</li>' +
     '</ul>' +
+    '<h3>Facteur de charge en virage</h3>' +
+    '<p style="margin:4px 0 8px;">Le facteur de charge (n) augmente avec l\'inclinaison en virage et réduit la marge par rapport au décrochage. Repères utiles à connaître :</p>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;">' +
+      '<tr style="color:var(--amber);text-align:left;"><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Inclinaison</th><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Facteur n</th><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Vitesse de décrochage</th></tr>' +
+      '<tr><td style="padding:3px 6px;">30°</td><td style="padding:3px 6px;">1,15 g</td><td style="padding:3px 6px;">+7 %</td></tr>' +
+      '<tr><td style="padding:3px 6px;">45°</td><td style="padding:3px 6px;">1,41 g</td><td style="padding:3px 6px;">+19 %</td></tr>' +
+      '<tr><td style="padding:3px 6px;">60°</td><td style="padding:3px 6px;">2,00 g</td><td style="padding:3px 6px;">+41 %</td></tr>' +
+      '<tr><td style="padding:3px 6px;">75°</td><td style="padding:3px 6px;">3,86 g</td><td style="padding:3px 6px;">+97 %</td></tr>' +
+    '</table>' +
+    '<p class="hint" style="margin:0;">n = 1 / cos(inclinaison). Restez sous le facteur de charge maximal certifié de votre appareil (souvent 4 g / -2 g en catégorie voltige simple, moins en ULM classique) et gardez une marge en air turbulent.</p>' +
     '<h3 style="color:#ff5a5a;">Avertissement</h3><ul>' +
-    '<li><b>AeroTrack est un outil d\'aide à la préparation et au suivi de vol. Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome). Vérifiez toujours ces sources avant et pendant le vol — les données affichées (OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes.</li>' +
+    '<li><b>AltiNav est un outil d\'aide à la préparation et au suivi de vol. Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome). Vérifiez toujours ces sources avant et pendant le vol — les données affichées (OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes.</li>' +
     '</ul>';
 
   function openInfoModal(){
@@ -3310,7 +3324,7 @@
     $('info-modal-body').innerHTML =
       '<div class="wd-block" style="border-left-color:#ff5a5a;">' +
         '<div class="wd-title" style="color:#ff5a5a;">Avertissement important</div>' +
-        '<p style="margin:6px 0 0;">AeroTrack est un outil d\'aide à la préparation et au suivi de vol.<br><br>' +
+        '<p style="margin:6px 0 0;">AltiNav est un outil d\'aide à la préparation et au suivi de vol.<br><br>' +
         '<b>Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome).<br><br>' +
         'Les données affichées (cartes OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes. Vérifiez toujours ces informations auprès des sources officielles avant et pendant le vol.</p>' +
       '</div>' +
@@ -3387,7 +3401,7 @@
 
   /* ======================= PLEIN ÉCRAN EN PAYSAGE ======================= */
   // Fonctionne sur Android/Chrome. Sur iPhone, Safari ne permet pas le plein écran via cette API :
-  // la vraie solution est d'ajouter AeroTrack à l'écran d'accueil (Partager → Sur l'écran d'accueil),
+  // la vraie solution est d'ajouter AltiNav à l'écran d'accueil (Partager → Sur l'écran d'accueil),
   // ce que les balises meta de cette page préparent déjà (lancement sans barre Safari).
   function tryFullscreenLandscape(){
     const isLandscape = window.matchMedia('(orientation: landscape)').matches;
