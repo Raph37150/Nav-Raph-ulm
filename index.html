@@ -317,13 +317,15 @@
   #drawer.open{transform:translateX(0);}
   #drawer-header{
     display:flex;align-items:center;justify-content:space-between;
-    padding:14px 16px;border-bottom:1px solid var(--border);
+    padding:14px 16px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    border-bottom:1px solid var(--border);
     flex-shrink:0;
   }
   #drawer-header h2{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);margin:0;}
   #drawer-close{
     background:none;border:1px solid var(--border-soft);color:var(--text);
-    width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;
+    width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;flex-shrink:0;
   }
   #drawer-body{overflow-y:auto;flex:1;padding:14px;}
   #drawer-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
@@ -992,6 +994,15 @@
       req.onerror = () => reject(req.error);
     });
   }
+  async function updateAircraftInDB(obj){
+    const db = await openAircraftDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(AIRCRAFT_STORE, 'readwrite');
+      const req = tx.objectStore(AIRCRAFT_STORE).put(obj); // obj.id existant => remplace l'entrée
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
   async function deleteAircraftFromDB(id){
     const db = await openAircraftDB();
     return new Promise((resolve) => {
@@ -1008,6 +1019,26 @@
     renderPlanList();
   }
 
+  let editingAircraftId = null;
+
+  function openAircraftForm(aircraft){
+    editingAircraftId = aircraft ? aircraft.id : null;
+    $('air-indicatif').value = aircraft ? aircraft.indicatif : '';
+    $('air-modele').value = aircraft ? aircraft.modele : '';
+    $('air-vc').value = aircraft ? aircraft.vc : 150;
+    $('air-vm').value = aircraft ? aircraft.vm : 110;
+    $('air-vd').value = aircraft ? aircraft.vd : 140;
+    $('air-conso').value = aircraft ? aircraft.conso : 15;
+    $('btn-save-aircraft').textContent = aircraft ? 'Enregistrer les modifications' : 'Enregistrer';
+    $('aircraft-form').style.display = 'block';
+    $('btn-add-aircraft').style.display = 'none';
+  }
+  function closeAircraftForm(){
+    editingAircraftId = null;
+    $('aircraft-form').style.display = 'none';
+    $('btn-add-aircraft').style.display = 'flex';
+  }
+
   async function renderAircraftList(){
     const list = $('aircraft-list');
     const empty = $('aircraft-empty');
@@ -1022,7 +1053,10 @@
         '<div class="aircraft-head">' +
           '<div><div class="aircraft-callsign">' + a.indicatif + '</div>' +
           '<div class="aircraft-model">' + a.modele + '</div></div>' +
-          '<button class="icon-btn del" title="Supprimer" data-id="' + a.id + '">✕</button>' +
+          '<div class="wpt-actions">' +
+            '<button class="icon-btn edit" title="Modifier" data-id="' + a.id + '">✏</button>' +
+            '<button class="icon-btn del" title="Supprimer" data-id="' + a.id + '">✕</button>' +
+          '</div>' +
         '</div>' +
         '<div class="aircraft-data">' +
           '<span>Croisière<b>' + a.vc + ' km/h</b></span>' +
@@ -1031,7 +1065,7 @@
           '<span>Conso<b>' + a.conso + ' L/h</b></span>' +
         '</div>';
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.del')) return;
+        if (e.target.closest('.del') || e.target.closest('.edit')) return;
         selectedAircraftId = a.id;
         applyAircraftToParams(a);
         renderAircraftList();
@@ -1039,6 +1073,15 @@
       list.appendChild(card);
     });
 
+    list.querySelectorAll('.icon-btn.edit').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id, 10);
+        const aircrafts2 = await listAircraft();
+        const aircraft = aircrafts2.find(a => a.id === id);
+        if (aircraft) openAircraftForm(aircraft);
+      });
+    });
     list.querySelectorAll('.icon-btn.del').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -1050,14 +1093,8 @@
     });
   }
 
-  $('btn-add-aircraft').addEventListener('click', () => {
-    $('aircraft-form').style.display = 'block';
-    $('btn-add-aircraft').style.display = 'none';
-  });
-  $('btn-cancel-aircraft').addEventListener('click', () => {
-    $('aircraft-form').style.display = 'none';
-    $('btn-add-aircraft').style.display = 'flex';
-  });
+  $('btn-add-aircraft').addEventListener('click', () => openAircraftForm(null));
+  $('btn-cancel-aircraft').addEventListener('click', closeAircraftForm);
   $('btn-save-aircraft').addEventListener('click', async () => {
     const indicatif = $('air-indicatif').value.trim();
     const modele = $('air-modele').value.trim();
@@ -1069,14 +1106,21 @@
       alert('Merci de renseigner au moins l\'indicatif, la vitesse de croisière et la consommation.');
       return;
     }
-    const id = await addAircraftToDB({ indicatif, modele: modele || '—', vc, vm: vm||vc, vd: vd||vc, conso });
-    $('air-indicatif').value = '';
-    $('air-modele').value = '';
-    $('aircraft-form').style.display = 'none';
-    $('btn-add-aircraft').style.display = 'flex';
+    const aircraftObj = { indicatif, modele: modele || '—', vc, vm: vm||vc, vd: vd||vc, conso };
+    let id;
+    if (editingAircraftId){
+      aircraftObj.id = editingAircraftId;
+      await updateAircraftInDB(aircraftObj);
+      id = editingAircraftId;
+    } else {
+      id = await addAircraftToDB(aircraftObj);
+    }
+    closeAircraftForm();
     selectedAircraftId = id;
     await renderAircraftList();
-    applyAircraftToParams({ indicatif, modele, vc, vm, vd, conso });
+    if (selectedAircraftId === id || editingAircraftId === null){
+      applyAircraftToParams(Object.assign({ id }, aircraftObj));
+    }
   });
 
   renderAircraftList();
@@ -1854,7 +1898,7 @@
       // Vecteur reliant l'avion à ses positions prévues (2' puis 5'), selon le cap et la vitesse actuels.
       const vectorPts = [[lat, lng], [p2.lat, p2.lng], [p5.lat, p5.lng]];
       if (!state.predVectorLine){
-        state.predVectorLine = L.polyline(vectorPts, { color:'#ff3b30', weight:4, opacity:.95 }).addTo(map);
+        state.predVectorLine = L.polyline(vectorPts, { color:'#ff3b30', weight:2.5, opacity:.95, dashArray:'6,6' }).addTo(map);
       } else {
         state.predVectorLine.setLatLngs(vectorPts);
       }
@@ -3357,9 +3401,21 @@
   /* ======================= SERVICE WORKER (mode hors-ligne complet) ======================= */
   if ('serviceWorker' in navigator){
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Force une vérification de mise à jour à chaque ouverture de l'appli (Safari iOS
+        // ne le fait pas toujours automatiquement de lui-même).
+        reg.update().catch(() => {});
+      }).catch(() => {
         // Silencieux : l'appli fonctionne quand même, juste sans mise en cache de son propre code.
       });
+    });
+    // Quand un nouveau Service Worker prend le relais (mise à jour installée), on recharge
+    // une seule fois pour afficher immédiatement la nouvelle version.
+    let swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swReloaded) return;
+      swReloaded = true;
+      window.location.reload();
     });
   }
 

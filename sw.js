@@ -1,8 +1,13 @@
 // Service Worker AeroTrack — met en cache l'application elle-même (HTML, bibliothèques, polices)
 // pour qu'elle puisse s'ouvrir et fonctionner même sans réseau du tout.
 // Les tuiles de carte, elles, restent gérées séparément par IndexedDB dans l'application.
+//
+// Stratégie : le document HTML est toujours pris en réseau en priorité quand c'est possible
+// (pour ne jamais rester bloqué sur une ancienne version), avec le cache seulement en secours
+// hors-ligne. Les bibliothèques externes (Leaflet, pdf.js, polices), elles, changent rarement :
+// cache en priorité, réseau en secours.
 
-const CACHE_VERSION = 'aerotrack-shell-v1';
+const CACHE_VERSION = 'aerotrack-shell-v2';
 
 const APP_SHELL = [
   './',
@@ -13,6 +18,14 @@ const APP_SHELL = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap'
 ];
+
+// Requêtes considérées comme "document" (le fichier HTML de l'appli lui-même) :
+// c'est celles-là qu'on veut toujours vérifier en réseau en priorité.
+function isAppDocument(request, url){
+  return request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('index.html');
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -35,30 +48,45 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  const url = event.request.url;
+  const url = new URL(event.request.url);
+
   // Ne pas intercepter les requêtes d'API dynamiques (météo, bases ULM, tuiles de carte) :
   // elles sont soit gérées par IndexedDB côté application, soit doivent rester en direct.
-  if (url.includes('overpass-api.de') ||
-      url.includes('vatsim.net') ||
-      url.includes('aviationweather.gov') ||
-      url.includes('allorigins.win') ||
-      url.includes('data.geopf.fr') ||
-      url.includes('tile.openstreetmap.org')) {
+  if (url.href.includes('overpass-api.de') ||
+      url.href.includes('vatsim.net') ||
+      url.href.includes('aviationweather.gov') ||
+      url.href.includes('allorigins.win') ||
+      url.href.includes('data.geopf.fr') ||
+      url.href.includes('tile.openstreetmap.org')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request).then((res) => {
+  if (isAppDocument(event.request, url)){
+    // Réseau en priorité pour le document principal, pour toujours récupérer la dernière
+    // version quand une connexion est disponible ; le cache ne sert que si hors-ligne.
+    event.respondWith(
+      fetch(event.request).then((res) => {
         if (res && res.status === 200){
           const resClone = res.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, resClone));
         }
         return res;
-      }).catch(() => cached);
-      // Sert le cache immédiatement s'il existe (rapide, fonctionne hors-ligne),
-      // tout en rafraîchissant le cache en arrière-plan si le réseau est disponible.
-      return cached || network;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Ressources statiques externes (bibliothèques, polices) : cache en priorité, réseau en secours.
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((res) => {
+        if (res && res.status === 200){
+          const resClone = res.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, resClone));
+        }
+        return res;
+      });
     })
   );
 });
