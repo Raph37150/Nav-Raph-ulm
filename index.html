@@ -293,6 +293,8 @@
   #hud-timer-block{cursor:pointer;pointer-events:auto;}
   .hud-value.timer{color:var(--text);}
   #hud-timer-block.on .hud-value.timer{color:var(--red);}
+  .hud-value.g{color:var(--amber);}
+  .hud-value.g.warn{color:var(--red);}
 
   /* ---------- DRAWER (tiroir latéral avec tous les réglages) ---------- */
   #drawer-backdrop{
@@ -356,8 +358,16 @@
   #main{
     position:relative;
     min-height:0;
+    overflow:hidden;
   }
-  #map{height:100%;width:100%;background:#0c1118;transform-origin:center center;transition:transform .25s linear;}
+  #map{
+    position:absolute;
+    top:-25%; left:-25%;
+    width:150%; height:150%;
+    background:#0c1118;
+    transform-origin:center center;
+    transition:transform .25s linear;
+  }
   .panel{
     padding:0;
     min-height:0;
@@ -672,6 +682,11 @@
       <div class="hud-block" id="hud-timer-block" title="Chronomètre (double-clic pour réinitialiser)">
         <div class="hud-label">Chrono</div>
         <div class="hud-value timer" id="hud-timer">00:00</div>
+      </div>
+      <div class="hud-sep"></div>
+      <div class="hud-block">
+        <div class="hud-label">G</div>
+        <div class="hud-value g" id="hud-g">--</div>
       </div>
     </div>
 
@@ -1813,10 +1828,10 @@
   function predIcon(label){
     return L.divIcon({
       className: '',
-      html: '<div style="width:34px;height:34px;border-radius:50%;background:#ff3b30;' +
+      html: '<div style="width:34px;height:34px;border-radius:50%;background:#3ddc84;' +
             'border:3px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,.6);' +
             'display:flex;align-items:center;justify-content:center;' +
-            'font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:800;color:#ffffff;">' + label + '</div>',
+            'font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:800;color:#04220f;">' + label + '</div>',
       iconSize: [34,34],
       iconAnchor: [17,17]
     });
@@ -1875,7 +1890,7 @@
     if (state.trackPoints.length > 3000) state.trackPoints.shift();
     if (!state.trackLine){
       state.trackLine = L.polyline(state.trackPoints, {
-        color: '#3ddc84', weight: 2, opacity: .8, dashArray: '2,7'
+        color: '#ff3b30', weight: 2.5, opacity: .85, dashArray: '2,7'
       }).addTo(map);
     } else {
       state.trackLine.setLatLngs(state.trackPoints);
@@ -1902,7 +1917,7 @@
       // Vecteur reliant l'avion à ses positions prévues (2' puis 5'), selon le cap et la vitesse actuels.
       const vectorPts = [[lat, lng], [p2.lat, p2.lng], [p5.lat, p5.lng]];
       if (!state.predVectorLine){
-        state.predVectorLine = L.polyline(vectorPts, { color:'#ff3b30', weight:2.5, opacity:.95, dashArray:'6,6' }).addTo(map);
+        state.predVectorLine = L.polyline(vectorPts, { color:'#3ddc84', weight:2.5, opacity:.95, dashArray:'6,6' }).addTo(map);
       } else {
         state.predVectorLine.setLatLngs(vectorPts);
       }
@@ -1929,6 +1944,43 @@
     $('gps-text').textContent = 'GPS: ' + msg;
     $('gps-dot').classList.remove('live');
   }
+
+  /* ======================= INDICATEUR DE G (accéléromètre du téléphone) ======================= */
+  // Indicatif, basé sur le capteur du téléphone (pas un instrument certifié) : utile pour se
+  // donner un ordre d'idée en virage, mais soumis aux vibrations/à la position du téléphone.
+  let gSensorActive = false;
+  let gMotionHandler = null;
+
+  function startGSensor(){
+    if (gSensorActive || typeof DeviceMotionEvent === 'undefined') return;
+    gMotionHandler = (e) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a || a.x == null) return;
+      const magnitude = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+      const g = magnitude / 9.81;
+      const el = $('hud-g');
+      if (!el) return;
+      el.textContent = g.toFixed(1) + ' g';
+      el.classList.toggle('warn', g > 2.5 || g < -0.5);
+    };
+    window.addEventListener('devicemotion', gMotionHandler);
+    gSensorActive = true;
+  }
+
+  function requestGSensorPermission(){
+    if (gSensorActive) return;
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+      // iOS exige une autorisation explicite, demandée depuis un vrai geste utilisateur.
+      DeviceMotionEvent.requestPermission().then(state => {
+        if (state === 'granted') startGSensor();
+      }).catch(() => {});
+    } else {
+      startGSensor();
+    }
+  }
+  ['pointerdown','touchstart','click'].forEach(evt => {
+    document.addEventListener(evt, () => { if (!gSensorActive) requestGSensorPermission(); }, { passive: true, once: false });
+  });
 
   /* ======================= WAKE LOCK (empêche la mise en veille pendant le GPS) ======================= */
   let wakeLock = null;
@@ -3266,7 +3318,7 @@
     '</ul>' +
     '<h3>Navigation en vol</h3><ul>' +
     '<li>Le GPS démarre automatiquement à l\'ouverture (nécessite une adresse https://).</li>' +
-    '<li>Bandeau du bas : cap, vitesse, altitude et chronomètre (tap pour démarrer/pause, double-tap pour réinitialiser).</li>' +
+    '<li>Bandeau du bas : cap, vitesse, altitude, chronomètre (tap pour démarrer/pause, double-tap pour réinitialiser) et facteur de charge en G (indicatif, basé sur l\'accéléromètre du téléphone — pas un instrument certifié).</li>' +
     '<li>Deux points "2\'" et "5\'" et un vecteur montrent votre position prévue selon le cap et la vitesse actuels.</li>' +
     '<li>Une alerte apparaît à l\'approche d\'un point tournant, avec le nouveau cap et le temps jusqu\'au suivant.</li>' +
     '<li>Bouton ⇧/✈ : bascule Nord en haut / Cap en haut (la carte pivote avec votre trajectoire).</li>' +
@@ -3282,16 +3334,6 @@
     '<li>METAR/TAF de LFOT actualisables dans le tiroir.</li>' +
     '<li>Enregistrez votre plan en JSON pour le recharger plus tard — aucune donnée n\'est envoyée en ligne.</li>' +
     '</ul>' +
-    '<h3>Facteur de charge en virage</h3>' +
-    '<p style="margin:4px 0 8px;">Le facteur de charge (n) augmente avec l\'inclinaison en virage et réduit la marge par rapport au décrochage. Repères utiles à connaître :</p>' +
-    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;">' +
-      '<tr style="color:var(--amber);text-align:left;"><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Inclinaison</th><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Facteur n</th><th style="padding:3px 6px;border-bottom:1px solid var(--border-soft);">Vitesse de décrochage</th></tr>' +
-      '<tr><td style="padding:3px 6px;">30°</td><td style="padding:3px 6px;">1,15 g</td><td style="padding:3px 6px;">+7 %</td></tr>' +
-      '<tr><td style="padding:3px 6px;">45°</td><td style="padding:3px 6px;">1,41 g</td><td style="padding:3px 6px;">+19 %</td></tr>' +
-      '<tr><td style="padding:3px 6px;">60°</td><td style="padding:3px 6px;">2,00 g</td><td style="padding:3px 6px;">+41 %</td></tr>' +
-      '<tr><td style="padding:3px 6px;">75°</td><td style="padding:3px 6px;">3,86 g</td><td style="padding:3px 6px;">+97 %</td></tr>' +
-    '</table>' +
-    '<p class="hint" style="margin:0;">n = 1 / cos(inclinaison). Restez sous le facteur de charge maximal certifié de votre appareil (souvent 4 g / -2 g en catégorie voltige simple, moins en ULM classique) et gardez une marge en air turbulent.</p>' +
     '<h3 style="color:#ff5a5a;">Avertissement</h3><ul>' +
     '<li><b>AltiNav est un outil d\'aide à la préparation et au suivi de vol. Il ne remplace en aucun cas la documentation aéronautique officielle</b> (AIP France, NOTAM, cartes VAC et OACI officielles, consignes des exploitants d\'aérodrome). Vérifiez toujours ces sources avant et pendant le vol — les données affichées (OpenStreetMap, calculs automatiques, décodage météo...) peuvent être incomplètes, erronées ou obsolètes.</li>' +
     '</ul>';
