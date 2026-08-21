@@ -1319,6 +1319,13 @@
       '<path d="M2 17l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
   }
 
+  // #map est volontairement surdimensionné et décalé pour pouvoir pivoter sans laisser
+  // de coin vide (mode "Cap en haut"). Les contrôles Leaflet (calques...) sont des enfants
+  // de #map par défaut : on les détache vers #main pour qu'ils restent toujours bien
+  // positionnés à l'écran, sans hériter du surdimensionnement ni de la rotation.
+  const leafletControlContainer = document.querySelector('#map .leaflet-control-container');
+  if (leafletControlContainer) $('main').appendChild(leafletControlContainer);
+
   // Boutons de zoom personnalisés, en dehors de la carte : restent bien positionnés et lisibles
   // même en mode "Cap en haut" (la carte elle-même pivote, ces boutons non).
   // Zoom : pincement / molette / double-clic (pas de boutons +/- pour garder l'écran dégagé).
