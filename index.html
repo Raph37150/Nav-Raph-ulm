@@ -217,6 +217,25 @@
   #fab-settings svg{width:75%;height:75%;fill:var(--amber);}
   #fab-settings:active{transform:scale(0.95);}
 
+  #btn-toggle-ulm{
+    position:absolute;
+    top:calc(var(--top-safe) + (var(--icon-size) + var(--icon-gap)) * 4);
+    right:calc(14px + env(safe-area-inset-right));
+    z-index:900;
+    width:var(--icon-size);height:var(--icon-size);
+    border-radius:50%;
+    background:var(--panel-2);
+    color:#0d6b2e;
+    border:1.5px solid #0d6b2e;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:calc(var(--icon-size) * 0.24);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #btn-toggle-ulm.off{opacity:.4;}
+
   #btn-info{
     position:absolute;
     bottom:22px;
@@ -702,6 +721,8 @@
     <button id="fab-settings" title="Paramètres">
       <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.62.06-.94 0-.32-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.04-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.44.17-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.63-.07.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
     </button>
+
+    <button id="btn-toggle-ulm" title="Afficher / masquer les bases ULM">ULM</button>
 
     <button id="btn-info" title="Notice / mode d'emploi">i</button>
 
@@ -3258,6 +3279,16 @@
     $('info-modal-backdrop').classList.add('hidden');
   }
   $('btn-info').addEventListener('click', openInfoModal);
+
+  $('btn-toggle-ulm').addEventListener('click', () => {
+    if (map.hasLayer(ulmLayer)){
+      map.removeLayer(ulmLayer);
+      $('btn-toggle-ulm').classList.add('off');
+    } else {
+      ulmLayer.addTo(map);
+      $('btn-toggle-ulm').classList.remove('off');
+    }
+  });
 
   $('btn-recenter').addEventListener('click', () => {
     if (!state.currentPos){
