@@ -2251,7 +2251,8 @@
       '.freq-table td{border:1px solid #ccc;padding:3px 6px;}' +
       '.freq-table td:last-child{text-align:right;font-family:monospace;font-weight:700;}' +
       '.foot-note{margin-top:12px;font-size:9.5px;color:#666;line-height:1.5;}' +
-      '.print-btn{margin-top:14px;padding:9px 18px;font-size:13px;cursor:pointer;background:#1a1300;color:#ffb300;border:none;border-radius:6px;font-weight:700;}' +
+      '.print-btn{margin-top:14px;margin-right:10px;padding:9px 18px;font-size:13px;cursor:pointer;background:#1a1300;color:#ffb300;border:none;border-radius:6px;font-weight:700;}' +
+      '.print-btn.back-btn{background:#fff;color:#1a1300;border:1px solid #1a1300;}' +
       '@media print{.print-btn{display:none;}}' +
       '</style></head><body>' +
       '<div class="doc-header">' +
@@ -2305,6 +2306,7 @@
       '</div>' +
       '<div class="foot-note">Coordonnées, altitudes et fréquences issues du plan de vol AltiNav. Route et distances calculées en route vraie (sans déclinaison magnétique ni correction de vent). Vérifiez ces éléments avec la documentation officielle (AIP, NOTAM) avant le vol.</div>' +
       '<button class="print-btn" onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button>' +
+      '<button class="print-btn back-btn" onclick="window.close()">← Retour à la navigation</button>' +
       '</body></html>';
 
     const w = window.open('', '_blank');
